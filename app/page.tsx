@@ -1,65 +1,110 @@
-import Image from "next/image";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { WHAT_IS, BRAND } from "@/lib/copy";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      <SiteHeader />
+
+      <main className="flex-1">
+        {/* Hero — warm, calm, not loud (Brand §2, §6). */}
+        <section className="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <div className="grid items-center gap-12 md:grid-cols-2">
+            <div>
+              <p className="font-display text-sm font-semibold uppercase tracking-wide text-teal">
+                {BRAND.tagline}
+              </p>
+              <h1 className="mt-4 text-4xl font-bold text-navy md:text-5xl">
+                Fancy a chat? There&apos;s someone here to talk to.
+              </h1>
+              <p className="mt-5 max-w-prose text-lg text-muted">{WHAT_IS.body}</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ButtonLink href="/signup" size="lg">
+                  Talk to someone
+                </ButtonLink>
+                <ButtonLink href="/become-a-listener" variant="secondary" size="lg">
+                  Become a Listener
+                </ButtonLink>
+              </div>
+              <p className="mt-4 text-sm text-muted">
+                No pressure. Start with a message and see how it feels.
+              </p>
+            </div>
+
+            {/* Calm illustrative panel using brand bubbles, no faces/sparkles. */}
+            <div className="relative">
+              <div className="rounded-[2rem] bg-mint p-8 md:p-12">
+                <div className="flex flex-col gap-4">
+                  <Bubble side="left" tone="teal">
+                    Are you free to talk?
+                  </Bubble>
+                  <Bubble side="right" tone="coral">
+                    Of course — I&apos;m here. How&apos;s your day been?
+                  </Bubble>
+                  <Bubble side="left" tone="teal">
+                    Honestly, a bit quiet. Nice to hear a voice.
+                  </Bubble>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Three calm reassurances */}
+        <section className="mx-auto max-w-6xl px-5 pb-20">
+          <div className="grid gap-5 md:grid-cols-3">
+            <Card>
+              <h3 className="text-lg font-semibold text-navy">Real humans, not bots</h3>
+              <p className="mt-2 text-muted">
+                Talk to a real person who&apos;s genuinely glad you called. The way a phone
+                call to a friend used to be.
+              </p>
+            </Card>
+            <Card>
+              <h3 className="text-lg font-semibold text-navy">
+                You&apos;re in control of what you spend
+              </h3>
+              <p className="mt-2 text-muted">
+                Choose a 30- or 60-minute block. You&apos;re only charged for the time you
+                actually talk, and you can end the call whenever you like.
+              </p>
+            </Card>
+            <Card>
+              <h3 className="text-lg font-semibold text-navy">Honest about what we are</h3>
+              <p className="mt-2 text-muted">
+                Good company — not therapy or a crisis service. If you ever need urgent or
+                professional help, we&apos;ll always show you where to find it.
+              </p>
+            </Card>
+          </div>
+        </section>
       </main>
+
+      <SiteFooter />
+    </>
+  );
+}
+
+function Bubble({
+  children,
+  side,
+  tone,
+}: {
+  children: React.ReactNode;
+  side: "left" | "right";
+  tone: "teal" | "coral";
+}) {
+  const align = side === "left" ? "self-start" : "self-end";
+  const colour = tone === "teal" ? "bg-teal text-white" : "bg-coral text-white";
+  const corner = side === "left" ? "rounded-bl-md" : "rounded-br-md";
+  return (
+    <div
+      className={`${align} max-w-[80%] rounded-2xl ${corner} ${colour} px-4 py-3 text-[15px] shadow-sm`}
+    >
+      {children}
     </div>
   );
 }
