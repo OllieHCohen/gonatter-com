@@ -30,6 +30,7 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
   const [state, setState] = useState<ConversationState>(initialState);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [online, setOnline] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,26 +39,63 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`conv:${conversationId}`)
+    let cancelled = false;
+
+    // Server is the source of truth: re-fetch the full ordered thread + state.
+    // This both powers the polling fallback and reconciles optimistic sends.
+    async function fetchLatest() {
+      const [{ data: msgs }, { data: conv }] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("id, sender_id, body, created_at")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true }),
+        supabase.from("conversations").select("state").eq("id", conversationId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      if (msgs) setMessages(msgs as ThreadMessage[]);
+      if (conv?.state) setState(conv.state as ConversationState);
+    }
+
+    const channel = supabase.channel(`conv:${conversationId}`, {
+      config: { presence: { key: userId } },
+    });
+
+    channel
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        (payload) => {
-          const m = payload.new as ThreadMessage;
-          setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
-        },
+        () => void fetchLatest(),
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${conversationId}` },
         (payload) => setState((payload.new as { state: ConversationState }).state),
       )
-      .subscribe();
+      .on("presence", { event: "sync" }, () => {
+        const present = channel.presenceState();
+        setOnline(Object.prototype.hasOwnProperty.call(present, otherId));
+      });
+
+    // Attach the user's JWT to the realtime socket, otherwise RLS drops every
+    // change for protected tables, then subscribe + announce our presence.
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      supabase.realtime.setAuth(data.session?.access_token ?? null);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") void channel.track({ online: true });
+      });
+    })();
+
+    // Polling fallback — guarantees fresh messages even if the websocket fails.
+    const poll = setInterval(fetchLatest, 3500);
+
     return () => {
+      cancelled = true;
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [conversationId, userId, otherId]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -65,8 +103,19 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
     if (!body || sending) return;
     setSending(true);
     setDraft("");
+    // Optimistic: show it immediately; fetchLatest reconciles to server truth.
+    const temp: ThreadMessage = {
+      id: `temp-${Date.now()}`,
+      sender_id: userId,
+      body,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, temp]);
     const res = await sendMessage(conversationId, body);
-    if (res?.error) setDraft(body);
+    if (res?.error) {
+      setMessages((prev) => prev.filter((m) => m.id !== temp.id));
+      setDraft(body);
+    }
     setSending(false);
   }
 
@@ -83,6 +132,18 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
             ← Messages
           </Link>
           <h1 className="font-display text-xl font-bold text-navy">{otherName}</h1>
+          <p className="flex items-center gap-1.5 text-xs font-semibold">
+            <span
+              className={cn(
+                "inline-block h-2 w-2 rounded-full",
+                online ? "bg-success" : "bg-line",
+              )}
+              aria-hidden
+            />
+            <span className={online ? "text-success" : "text-muted"}>
+              {online ? "Online now" : "Offline"}
+            </span>
+          </p>
           <Link
             href={`/report?subject=${otherId}`}
             className="text-xs font-semibold text-muted hover:text-error"

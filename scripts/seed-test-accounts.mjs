@@ -3,6 +3,37 @@
 // removes any existing accounts with these emails first, then recreates them.
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
+import { deflateSync } from "node:zlib";
+
+// Build a tiny solid-colour PNG (no external assets), so the seeded listener
+// has a real photo in the Supabase storage bucket that next/image will accept.
+function crc32(buf) {
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+function chunk(type, data) {
+  const t = Buffer.from(type, "ascii");
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length, 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([t, data])), 0);
+  return Buffer.concat([len, t, data, crc]);
+}
+function makePng(size, [r, g, b]) {
+  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8; ihdr[9] = 6; // 8-bit, RGBA
+  const row = Buffer.alloc(1 + size * 4);
+  for (let x = 0; x < size; x++) { const o = 1 + x * 4; row[o] = r; row[o + 1] = g; row[o + 2] = b; row[o + 3] = 255; }
+  const raw = Buffer.concat(Array.from({ length: size }, () => row));
+  return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+}
 
 const env = Object.fromEntries(
   readFileSync(new URL("../.env.local", import.meta.url), "utf8")
@@ -49,18 +80,28 @@ await admin.from("profiles").insert({
 await admin.from("caller_profiles").insert({ profile_id: callerId, seen_platonic_reminder: false });
 console.log("\n✓ Caller created:", callerId);
 
-// ── Listener (fully live: verified, charges enabled, available) ──
+// ── Listener (fully live: profile complete, verified, charges enabled, available) ──
 const listenerId = await makeUser(LISTENER_EMAIL);
 await admin.from("profiles").insert({
   id: listenerId, role: "listener", display_name: "Sam (Test Listener)", country: "gb", phone_verified: true,
 });
+
+// Upload a placeholder avatar to the listener-photos bucket → public URL.
+const photoPath = `${listenerId}/avatar.png`;
+const up = await admin.storage.from("listener-photos")
+  .upload(photoPath, makePng(96, [20, 184, 166]), { contentType: "image/png", upsert: true });
+if (up.error) console.warn("  photo upload warning:", up.error.message);
+const photoUrl = admin.storage.from("listener-photos").getPublicUrl(photoPath).data.publicUrl;
+
 await admin.from("listener_profiles").insert({
   profile_id: listenerId,
   bio: "Friendly test listener — here for a calm, no-pressure chat about your day.",
+  photo_url: photoUrl,
+  dob: "1990-01-01",
   per_minute_rate_minor: 50, rate_currency: "gbp",
   id_verified: true, charges_enabled: true, available: true,
 });
-console.log("✓ Listener created (live in discovery):", listenerId);
+console.log("✓ Listener created (complete + live in discovery):", listenerId);
 
 console.log(`\n──────────── TEST ACCOUNTS ────────────`);
 console.log(`Caller    →  ${CALLER_EMAIL}   /  ${PASSWORD}`);

@@ -19,6 +19,19 @@ export default async function ListenerDashboard() {
     .single();
   const lp = data as ListenerProfile | null;
 
+  // Incoming conversation requests + active chats, newest first.
+  const { data: convData } = await supabase
+    .from("conversations")
+    .select("id, state, updated_at, caller:profiles!conversations_caller_id_fkey(display_name)")
+    .eq("listener_id", userId)
+    .in("state", ["open", "accepted"])
+    .order("updated_at", { ascending: false });
+  const requests = (convData ?? []) as unknown as Array<{
+    id: string;
+    state: string;
+    caller: { display_name: string } | null;
+  }>;
+
   const hasProfile = Boolean(lp?.bio && lp?.photo_url && lp?.dob);
   const steps: Step[] = [
     { label: "Complete your profile", done: hasProfile, href: "/listener/onboarding", cta: "Edit profile" },
@@ -68,6 +81,36 @@ export default async function ListenerDashboard() {
           </ul>
         </Card>
       )}
+
+      <Card>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-display text-lg font-bold text-navy">Conversation requests</h2>
+          <Link href="/messages" className="text-sm font-semibold text-teal hover:underline">
+            All messages →
+          </Link>
+        </div>
+        {requests.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">
+            No requests yet. When a caller reaches out, it&apos;ll appear here.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {requests.map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/messages/${r.id}`}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3 hover:shadow-sm"
+                >
+                  <span className="font-semibold text-navy">{r.caller?.display_name ?? "Someone"}</span>
+                  <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-navy">
+                    {r.state === "open" ? "New request" : "Accepted"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 
 const NAV = [
   { href: "/listener", label: "Dashboard" },
+  { href: "/messages", label: "Messages" },
   { href: "/listener/onboarding", label: "My profile" },
 ];
 
