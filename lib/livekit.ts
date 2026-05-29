@@ -1,16 +1,21 @@
 import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 
 // LIVEKIT_URL is a wss:// URL for the client; the server API wants https://.
-const WS_URL = process.env.LIVEKIT_URL!;
-const HTTP_URL = WS_URL.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
-const API_KEY = process.env.LIVEKIT_API_KEY!;
-const API_SECRET = process.env.LIVEKIT_API_SECRET!;
+// Read env without eager transforms so importing this module never throws at
+// build time (Next collects page data before env vars are guaranteed present).
+const WS_URL = process.env.LIVEKIT_URL ?? "";
+const API_KEY = process.env.LIVEKIT_API_KEY ?? "";
+const API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 
 export const livekitWsUrl = WS_URL;
 
+function httpUrl() {
+  return WS_URL.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+}
+
 let _svc: RoomServiceClient | null = null;
 function svc() {
-  if (!_svc) _svc = new RoomServiceClient(HTTP_URL, API_KEY, API_SECRET);
+  if (!_svc) _svc = new RoomServiceClient(httpUrl(), API_KEY, API_SECRET);
   return _svc;
 }
 
