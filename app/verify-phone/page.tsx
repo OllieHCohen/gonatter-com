@@ -49,7 +49,7 @@ export default function VerifyPhonePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
       <div className="mb-8 text-center">
-        <Logo variant="light" />
+        <Logo variant="light" size="lg" />
         <h1 className="mt-6 text-3xl font-bold text-navy">Verify your phone</h1>
         <p className="mt-2 text-muted">A quick check to keep gonatter safe for everyone.</p>
       </div>

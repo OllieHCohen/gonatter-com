@@ -27,7 +27,7 @@ function SignupForm() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-12">
       <div className="mb-8 text-center">
-        <Logo variant="light" />
+        <Logo variant="light" size="lg" />
         <h1 className="mt-6 text-3xl font-bold text-navy">Join gonatter</h1>
         <p className="mt-2 text-muted">Warm conversation with real people. No pressure.</p>
       </div>
