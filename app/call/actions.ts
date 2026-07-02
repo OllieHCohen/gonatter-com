@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe, PLATFORM_FEE_PERCENT } from "@/lib/stripe";
@@ -249,28 +248,42 @@ export async function endCall(
           .eq("call_session_id", callSessionId);
       }
 
-      // Pay the listener their share via Stripe Connect transfer.
+      // Pay the listener their share via Stripe Connect transfer. If the
+      // listener has no Connect account yet, record the debt as a pending
+      // payout instead of silently dropping it — the money owed must never
+      // vanish just because onboarding was incomplete.
       const { data: lp } = await admin
         .from("listener_profiles")
         .select("stripe_account_id, calls_count")
         .eq("profile_id", cs.listener_id)
         .single();
-      if (lp?.stripe_account_id && result.listenerAmountMinor > 0) {
-        const transfer = await stripe.transfers.create({
-          amount: result.listenerAmountMinor,
-          currency: cs.rate_currency,
-          destination: lp.stripe_account_id,
-          metadata: { call_session_id: callSessionId },
-        });
-        await admin.from("payouts").insert({
-          call_session_id: callSessionId,
-          listener_id: cs.listener_id,
-          stripe_transfer_id: transfer.id,
-          amount_minor: result.listenerAmountMinor,
-          currency: cs.rate_currency,
-          platform_fee_minor: result.platformFeeMinor,
-          status: "paid",
-        });
+      if (result.listenerAmountMinor > 0) {
+        if (lp?.stripe_account_id) {
+          const transfer = await stripe.transfers.create({
+            amount: result.listenerAmountMinor,
+            currency: cs.rate_currency,
+            destination: lp.stripe_account_id,
+            metadata: { call_session_id: callSessionId },
+          });
+          await admin.from("payouts").insert({
+            call_session_id: callSessionId,
+            listener_id: cs.listener_id,
+            stripe_transfer_id: transfer.id,
+            amount_minor: result.listenerAmountMinor,
+            currency: cs.rate_currency,
+            platform_fee_minor: result.platformFeeMinor,
+            status: "paid",
+          });
+        } else {
+          await admin.from("payouts").insert({
+            call_session_id: callSessionId,
+            listener_id: cs.listener_id,
+            amount_minor: result.listenerAmountMinor,
+            currency: cs.rate_currency,
+            platform_fee_minor: result.platformFeeMinor,
+            status: "pending",
+          });
+        }
       }
 
       await admin
@@ -298,6 +311,8 @@ export async function endCall(
   }
 
   await closeRoom(cs.livekit_room);
-  revalidatePath(`/messages/${cs.conversation_id}`);
+  // Deliberately NO revalidatePath here: it makes the client refetch the call
+  // page mid-settlement, which swaps CallRoom out for CallSetup and destroys
+  // the end-of-call receipt before the user ever sees it.
   return { charged: result.charge, finalAmountMinor: result.finalAmountMinor, chargeSeconds: result.chargeSeconds };
 }

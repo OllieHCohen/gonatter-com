@@ -25,6 +25,7 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency }:
   const [block, setBlock] = useState<30 | 60>(30);
   const [step, setStep] = useState<"choose" | "pay">("choose");
   const [busy, setBusy] = useState(false);
+  const [payReady, setPayReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const stripeRef = useRef<Stripe | null>(null);
@@ -56,6 +57,7 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency }:
     if (step === "pay" && elementsRef.current) {
       const paymentEl = elementsRef.current.create("payment");
       paymentEl.mount("#payment-element");
+      paymentEl.on("ready", () => setPayReady(true));
     }
   }, [step]);
 
@@ -123,9 +125,24 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency }:
             Add a card to hold {formatMoney(maxHold, currency)}. This is an authorisation, not a charge.
           </p>
           <div id="payment-element" />
+          {!payReady && (
+            <div className="animate-pulse space-y-3" aria-hidden>
+              <div className="h-11 rounded-xl bg-mint/70" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-11 rounded-xl bg-mint/70" />
+                <div className="h-11 rounded-xl bg-mint/70" />
+              </div>
+              <p className="text-center text-sm text-muted">Loading secure payment form…</p>
+            </div>
+          )}
           {error && <FieldError>{error}</FieldError>}
-          <Button onClick={authoriseAndConnect} disabled={busy} size="lg" className="w-full">
-            {busy ? "Authorising…" : `Authorise & connect`}
+          <Button
+            onClick={authoriseAndConnect}
+            disabled={busy || !payReady}
+            size="lg"
+            className="w-full"
+          >
+            {busy ? "Authorising…" : payReady ? "Authorise & connect" : "Loading…"}
           </Button>
         </>
       )}

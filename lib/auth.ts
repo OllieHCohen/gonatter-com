@@ -30,10 +30,22 @@ export async function getSessionProfile(): Promise<{
   return { userId: user.id, email: user.email ?? null, profile: profile as Profile | null };
 }
 
+// Phone verification is only enforced when Twilio can actually deliver OTPs
+// (trial accounts can't reach unverified numbers). Flip the env var to "true"
+// in Vercel once Twilio is upgraded.
+export function phoneVerificationRequired(): boolean {
+  return process.env.PHONE_VERIFICATION_REQUIRED === "true";
+}
+
 // Guard: require a signed-in user; redirect to login otherwise.
+// Also enforces the phone gate — /post-auth's redirect alone is bypassable
+// by navigating straight to an app URL.
 export async function requireUser() {
   const session = await getSessionProfile();
   if (!session) redirect("/login");
+  if (session.profile && !session.profile.phone_verified && phoneVerificationRequired()) {
+    redirect("/verify-phone");
+  }
   return session;
 }
 

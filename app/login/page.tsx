@@ -24,7 +24,12 @@ export default function LoginPage() {
           <Input id="email" name="email" type="email" autoComplete="email" required />
         </div>
         <div>
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-baseline justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link href="/forgot-password" className="text-sm font-semibold text-teal hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <Input id="password" name="password" type="password" autoComplete="current-password" required />
         </div>
 

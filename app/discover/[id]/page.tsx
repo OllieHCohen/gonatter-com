@@ -77,7 +77,7 @@ export default async function ListenerDetail({ params }: Params) {
               {p.rating_count > 0 && <span>{p.rating_avg.toFixed(1)} ★ ({p.rating_count})</span>}
               {p.calls_count > 0 && <span>{p.calls_count} calls</span>}
               <span className={live ? "text-success" : "text-muted"}>
-                {live ? "● Available now" : "Offline"}
+                {live ? "● Accepting calls" : "Not taking calls right now"}
               </span>
             </div>
           </div>

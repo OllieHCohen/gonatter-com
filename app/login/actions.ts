@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { homePathForRole } from "@/lib/auth";
+import { homePathForRole, phoneVerificationRequired } from "@/lib/auth";
 import type { UserRole } from "@/lib/types";
 
 const schema = z.object({
@@ -31,7 +31,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     .maybeSingle();
 
   if (!profile) redirect("/signup");
-  if (!profile.phone_verified) redirect("/verify-phone");
+  if (!profile.phone_verified && phoneVerificationRequired()) redirect("/verify-phone");
   redirect(homePathForRole(profile.role as UserRole));
 }
 

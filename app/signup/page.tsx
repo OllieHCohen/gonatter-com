@@ -6,9 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { signUpAction, type SignupState } from "./actions";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
-import { Input, Label, Select, FieldError, Hint } from "@/components/ui/Field";
+import { Input, Label, Select, FieldError } from "@/components/ui/Field";
 import { COUNTRIES } from "@/lib/countries";
-import { AGE_GATE } from "@/lib/copy";
 
 export default function SignupPage() {
   return (
@@ -67,12 +66,26 @@ function SignupForm() {
           </Select>
         </div>
 
+        <label className="flex items-start gap-3 rounded-xl bg-mint/40 px-4 py-3 text-sm text-navy">
+          <input type="checkbox" name="terms" required className="mt-0.5 h-4 w-4 accent-teal" />
+          <span>
+            I&apos;m 18 or over and agree to the{" "}
+            <Link href="/terms" target="_blank" className="font-semibold text-teal hover:underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="font-semibold text-teal hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+
         <FieldError>{state.error}</FieldError>
 
         <Button type="submit" size="lg" disabled={pending} className="mt-2">
           {pending ? "Creating your account…" : "Create account"}
         </Button>
-        <Hint>{AGE_GATE}</Hint>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted">

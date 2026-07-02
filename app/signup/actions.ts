@@ -11,6 +11,7 @@ const schema = z.object({
   email: z.string().trim().email("Please enter a valid email"),
   password: z.string().min(8, "Use at least 8 characters"),
   country: z.string().trim().length(2).toLowerCase().default("gb"),
+  terms: z.literal("on", "Please confirm you're 18 or over and agree to the terms."),
 });
 
 export type SignupState = { error?: string };
@@ -25,6 +26,7 @@ export async function signUpAction(
     email: formData.get("email"),
     password: formData.get("password"),
     country: formData.get("country") || "gb",
+    terms: formData.get("terms"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check your details" };
@@ -69,5 +71,6 @@ export async function signUpAction(
   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
   if (signInErr) return { error: "Account created — please log in." };
 
-  redirect("/verify-phone");
+  // /post-auth decides whether phone verification is required.
+  redirect("/post-auth");
 }

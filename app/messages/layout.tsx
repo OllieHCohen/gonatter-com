@@ -9,6 +9,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
       ? [
           { href: "/listener", label: "Dashboard" },
           { href: "/messages", label: "Messages" },
+          { href: "/listener/onboarding", label: "My profile" },
         ]
       : [
           { href: "/discover", label: "Discover" },

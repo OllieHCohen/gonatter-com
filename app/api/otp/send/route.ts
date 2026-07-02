@@ -19,6 +19,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("OTP send error:", e);
-    return NextResponse.json({ error: "Could not send the code. Check the number and try again." }, { status: 502 });
+    return NextResponse.json(
+      { error: "We couldn't send a code just now — this is usually a problem on our side, not with your number. Please try again in a few minutes." },
+      { status: 502 },
+    );
   }
 }
