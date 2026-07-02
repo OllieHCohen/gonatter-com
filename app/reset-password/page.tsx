@@ -25,11 +25,17 @@ function ResetPasswordForm() {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  // The email link carries a one-time code (PKCE) — exchange it for a session.
+  // The session is normally established by /auth/confirm (server-side
+  // token_hash verification) before we land here. The ?code= exchange path is
+  // kept for same-browser PKCE links; ?error= means the link was bad.
   useEffect(() => {
     const supabase = createClient();
     const code = params.get("code");
     (async () => {
+      if (params.get("error")) {
+        setLinkError(true);
+        return;
+      }
       if (code) {
         const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
         if (exErr) {
