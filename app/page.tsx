@@ -22,7 +22,7 @@ export default function Home() {
               </h1>
               <p className="mt-5 max-w-prose text-lg text-muted">{WHAT_IS.body}</p>
               <p className="mt-5 w-fit rounded-full bg-success/15 px-5 py-2.5 font-semibold text-success">
-                🎁 {FREE_MINUTES.badge} on every call
+                {`🎁 ${FREE_MINUTES.badge} on every call`}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/signup" size="lg">
@@ -71,8 +71,7 @@ export default function Home() {
                 First 2 minutes free, then you&apos;re in control
               </h3>
               <p className="mt-2 text-muted">
-                {FREE_MINUTES.line} After that you&apos;re only charged for the time you
-                actually talk, and you can end the call whenever you like.
+                {`${FREE_MINUTES.line} After that you're only charged for the time you actually talk, and you can end the call whenever you like.`}
               </p>
             </Card>
             <Card>

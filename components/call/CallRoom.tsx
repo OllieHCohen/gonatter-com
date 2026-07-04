@@ -242,7 +242,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 
         {summary.billableSeconds > 0 && (
           <p className="text-sm text-muted">
-            {startedLabel && <>Started {startedLabel} · </>}Call length {mmss(summary.billableSeconds)}
+            {`${startedLabel ? `Started ${startedLabel} · ` : ""}Call length ${mmss(summary.billableSeconds)}`}
           </p>
         )}
 
@@ -253,20 +253,14 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
               been notified and will put any charge right. Sorry about that.
             </p>
           ) : summary.charged ? (
-            role === "caller" ? (
-              <p className="text-lg font-bold text-navy">
-                You were charged {formatMoney(summary.finalAmountMinor, summary.currency)} for{" "}
-                {mmss(summary.chargeSeconds)} — your first 2 minutes were free
-              </p>
-            ) : (
-              <p className="text-lg font-bold text-navy">
-                You earned {formatMoney(listenerShare, summary.currency)} for {mmss(summary.chargeSeconds)} of
-                paid time
-              </p>
-            )
+            <p className="text-lg font-bold text-navy">
+              {role === "caller"
+                ? `You were charged ${formatMoney(summary.finalAmountMinor, summary.currency)} for ${mmss(summary.chargeSeconds)} — your first 2 minutes were free`
+                : `You earned ${formatMoney(listenerShare, summary.currency)} for ${mmss(summary.chargeSeconds)} of paid time`}
+            </p>
           ) : (
             <p className="text-lg font-bold text-navy">
-              No charge — {role === "caller" ? "your" : "the"} first 2 minutes are free. 🎁
+              {`No charge — ${role === "caller" ? "your" : "the"} first 2 minutes are free. 🎁`}
             </p>
           )}
         </div>
@@ -321,7 +315,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       {status === "active" &&
         (elapsed < FREE_CALL_SECONDS ? (
           <p className="mx-auto w-fit rounded-full bg-success/15 px-5 py-2 font-semibold text-success">
-            🎁 Free — {mmss(FREE_CALL_SECONDS - elapsed)} of free time left
+            {`🎁 Free — ${mmss(FREE_CALL_SECONDS - elapsed)} of free time left`}
           </p>
         ) : (
           <p className="mx-auto w-fit rounded-full bg-sunshine/20 px-5 py-2 text-sm font-semibold text-navy">
@@ -330,6 +324,12 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
               : "Past the free 2 minutes — this time counts"}
           </p>
         ))}
+
+      {(status === "connecting" || status === "waiting") && (
+        <p className="mx-auto w-fit rounded-full bg-success/15 px-5 py-2 font-semibold text-success">
+          🎁 First 2 minutes free
+        </p>
+      )}
 
       {role === "caller" && callMeta.funding === "credit" && callMeta.rateMinor > 0 && (
         <div className="mx-auto w-full max-w-sm rounded-2xl border border-teal/40 bg-mint/40 px-5 py-4">

@@ -104,7 +104,7 @@ export default async function DiscoverPage({
         <h1 className="font-display text-3xl font-bold text-navy">{WHAT_IS.heading}</h1>
         <p className="mt-2 max-w-2xl text-muted">{WHAT_IS.body}</p>
         <p className="mt-4 w-fit rounded-full bg-success/15 px-5 py-2.5 font-semibold text-success">
-          🎁 {FREE_MINUTES.badge} on every call — only pay once you know you&apos;ve clicked
+          {`🎁 ${FREE_MINUTES.badge} on every call — only pay once you know you've clicked`}
         </p>
       </section>
 
