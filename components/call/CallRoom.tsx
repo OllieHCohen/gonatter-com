@@ -327,7 +327,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 
       {(status === "connecting" || status === "waiting") && (
         <p className="mx-auto w-fit rounded-full bg-success/15 px-5 py-2 font-semibold text-success">
-          🎁 First 2 minutes free
+          {"🎁 First 2 minutes free"}
         </p>
       )}
 
