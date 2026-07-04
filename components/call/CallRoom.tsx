@@ -39,6 +39,9 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
     finalAmountMinor: number;
     chargeSeconds: number;
     currency: string;
+    startedAt?: string | null;
+    endedAt?: string | null;
+    settleError?: string;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -65,6 +68,9 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
         finalAmountMinor: res.finalAmountMinor,
         chargeSeconds: res.chargeSeconds,
         currency: currencyRef.current,
+        startedAt: res.startedAt,
+        endedAt: res.endedAt,
+        settleError: res.error,
       });
     },
     [callSessionId],
@@ -198,19 +204,35 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 
   if (status === "ended" && summary) {
     const listenerShare = Math.round(summary.finalAmountMinor * 0.75);
+    const startedLabel = summary.startedAt
+      ? new Date(summary.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+      : null;
     return (
       <Card className="space-y-4 text-center">
         <h1 className="font-display text-2xl font-bold text-navy">Call ended</h1>
         <p className="text-muted">{SAFETY_END}</p>
-        <div className="rounded-xl bg-mint px-4 py-4">
-          {summary.charged ? (
+
+        {summary.chargeSeconds > 0 && (
+          <p className="text-sm text-muted">
+            {startedLabel && <>Started {startedLabel} · </>}Call length {mmss(summary.chargeSeconds)}
+          </p>
+        )}
+
+        <div className={`rounded-xl px-4 py-4 ${summary.settleError ? "bg-error/10" : "bg-mint"}`}>
+          {summary.settleError ? (
+            <p className="text-base font-semibold text-navy">
+              We hit a problem finalising this call, so nothing extra has been taken — the team has
+              been notified and will put any charge right. Sorry about that.
+            </p>
+          ) : summary.charged ? (
             role === "caller" ? (
               <p className="text-lg font-bold text-navy">
-                You were charged {formatMoney(summary.finalAmountMinor, summary.currency)}
+                You were charged {formatMoney(summary.finalAmountMinor, summary.currency)} for{" "}
+                {mmss(summary.chargeSeconds)}
               </p>
             ) : (
               <p className="text-lg font-bold text-navy">
-                You earned {formatMoney(listenerShare, summary.currency)}
+                You earned {formatMoney(listenerShare, summary.currency)} for {mmss(summary.chargeSeconds)}
               </p>
             )
           ) : (

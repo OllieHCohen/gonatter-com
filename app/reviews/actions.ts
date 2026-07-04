@@ -27,7 +27,11 @@ export async function submitReview(
     .eq("id", callSessionId)
     .maybeSingle();
   if (!cs || cs.caller_id !== user.id) return { error: "Call not found." };
-  if (cs.state !== "completed") return { error: "You can review once the call has ended." };
+  // "failed" means the money settlement hit a problem — the call itself still
+  // happened, so the caller may absolutely review it.
+  if (!["completed", "failed"].includes(cs.state)) {
+    return { error: "You can review once the call has ended." };
+  }
   if ((cs.billable_seconds ?? 0) < REVIEW_UNLOCK_SECONDS) {
     return { error: "Reviews unlock after a 3-minute call." };
   }

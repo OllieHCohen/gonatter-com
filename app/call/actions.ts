@@ -184,25 +184,65 @@ type SettleResult = {
   charged: boolean;
   finalAmountMinor: number;
   chargeSeconds: number;
+  startedAt?: string | null;
+  endedAt?: string | null;
   error?: string;
 };
 
+function recordedResult(cs: {
+  final_amount_minor: number | null;
+  billable_seconds: number | null;
+  both_connected_at: string | null;
+  ended_at: string | null;
+  state: string;
+}): SettleResult {
+  return {
+    charged: (cs.final_amount_minor ?? 0) > 0,
+    finalAmountMinor: cs.final_amount_minor ?? 0,
+    chargeSeconds: cs.billable_seconds ?? 0,
+    startedAt: cs.both_connected_at,
+    endedAt: cs.ended_at,
+    error: cs.state === "failed" ? "Settlement failed" : undefined,
+  };
+}
+
 // Settle a call: measure billable time on the server, capture the real amount
-// (<= the hold), pay the listener their 75%, finalise. Idempotent.
+// (<= the hold), pay the listener their 75%, finalise. Idempotent — both
+// parties' browsers call this when a call ends (one ends, the other reacts to
+// the disconnect), so settlement is claimed atomically and the loser just
+// waits for the winner's outcome instead of double-capturing.
 export async function endCall(
   callSessionId: string,
   reason: "caller_left" | "listener_left" | "block_reached" | "no_show" | "error" = "caller_left",
 ): Promise<SettleResult> {
   const admin = createAdminClient();
-  const { data: cs } = await admin.from("call_sessions").select("*").eq("id", callSessionId).single();
-  if (!cs) return { charged: false, finalAmountMinor: 0, chargeSeconds: 0, error: "Not found" };
+  const endedAt = new Date();
 
-  // Already finalised — return what we recorded.
-  if (["completed", "cancelled", "failed"].includes(cs.state)) {
-    return { charged: (cs.final_amount_minor ?? 0) > 0, finalAmountMinor: cs.final_amount_minor ?? 0, chargeSeconds: cs.billable_seconds ?? 0 };
+  // Atomic claim: only the first caller flips ended_at from null.
+  const { data: claimed } = await admin
+    .from("call_sessions")
+    .update({ ended_at: endedAt.toISOString(), end_reason: reason })
+    .eq("id", callSessionId)
+    .is("ended_at", null)
+    .select("*")
+    .maybeSingle();
+
+  let cs = claimed;
+  if (!cs) {
+    // Someone else claimed it (or it's already settled) — wait for the outcome.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { data: row } = await admin
+        .from("call_sessions")
+        .select("*")
+        .eq("id", callSessionId)
+        .maybeSingle();
+      if (!row) return { charged: false, finalAmountMinor: 0, chargeSeconds: 0, error: "Not found" };
+      if (["completed", "cancelled", "failed"].includes(row.state)) return recordedResult(row);
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    return { charged: false, finalAmountMinor: 0, chargeSeconds: 0, error: "Settlement still in progress" };
   }
 
-  const endedAt = new Date();
   const billableSeconds = cs.both_connected_at
     ? Math.max(0, Math.floor((endedAt.getTime() - new Date(cs.both_connected_at).getTime()) / 1000))
     : 0;
@@ -303,17 +343,39 @@ export async function endCall(
         .update({ calls_count: (lp?.calls_count ?? 0) + 1 })
         .eq("profile_id", cs.listener_id);
     }
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Call settlement failed:", callSessionId, msg);
     await admin
       .from("call_sessions")
       .update({ state: "failed", ended_at: endedAt.toISOString(), billable_seconds: billableSeconds, end_reason: "error" })
       .eq("id", callSessionId);
-    return { charged: false, finalAmountMinor: 0, chargeSeconds: billableSeconds, error: "Settlement failed" };
+    // Money problems must never be silent — straight into the admin bug queue.
+    await admin.from("bug_reports").insert({
+      reporter_id: cs.caller_id,
+      description: `Automatic report: call settlement failed for session ${callSessionId}.\n\nError: ${msg}`,
+      page_url: `/call/${cs.conversation_id}`,
+      context: { source: "endCall", billable_seconds: String(billableSeconds) },
+    });
+    return {
+      charged: false,
+      finalAmountMinor: 0,
+      chargeSeconds: billableSeconds,
+      startedAt: cs.both_connected_at,
+      endedAt: endedAt.toISOString(),
+      error: "Settlement failed",
+    };
   }
 
   await closeRoom(cs.livekit_room);
   // Deliberately NO revalidatePath here: it makes the client refetch the call
   // page mid-settlement, which swaps CallRoom out for CallSetup and destroys
   // the end-of-call receipt before the user ever sees it.
-  return { charged: result.charge, finalAmountMinor: result.finalAmountMinor, chargeSeconds: result.chargeSeconds };
+  return {
+    charged: result.charge,
+    finalAmountMinor: result.finalAmountMinor,
+    chargeSeconds: result.chargeSeconds,
+    startedAt: cs.both_connected_at,
+    endedAt: endedAt.toISOString(),
+  };
 }
