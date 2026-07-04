@@ -32,6 +32,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
   const [elapsed, setElapsed] = useState(0);
   const [muted, setMuted] = useState(false);
   const [canPlayAudio, setCanPlayAudio] = useState(true);
+  const [otherMuted, setOtherMuted] = useState(false);
   const [levels, setLevels] = useState<{ me: number; other: number }>({ me: 0, other: 0 });
   const [diag, setDiag] = useState<Record<string, string>>({});
   const [summary, setSummary] = useState<{
@@ -126,6 +127,18 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
     // them". Surface it instead of suffering it.
     room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
       setCanPlayAudio(room.canPlaybackAudio);
+    });
+
+    // Show when the other person mutes/unmutes their microphone.
+    room.on(RoomEvent.TrackMuted, (pub, participant) => {
+      if (participant.identity !== room.localParticipant.identity && pub.kind === "audio") {
+        setOtherMuted(true);
+      }
+    });
+    room.on(RoomEvent.TrackUnmuted, (pub, participant) => {
+      if (participant.identity !== room.localParticipant.identity && pub.kind === "audio") {
+        setOtherMuted(false);
+      }
     });
 
     // Diagnostics snapshot every couple of seconds while in the call.
@@ -301,19 +314,31 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       <div className="font-display text-5xl font-bold tabular-nums text-navy">{mmss(elapsed)}</div>
 
       {role === "caller" && callMeta.funding === "credit" && callMeta.rateMinor > 0 && (
-        <p className="text-sm font-semibold text-teal">
-          Credit{" "}
-          {formatMoney(
-            Math.max(0, callMeta.creditMinor - Math.ceil((elapsed * callMeta.rateMinor) / 60)),
-            callMeta.currency,
-          )}{" "}
-          · about{" "}
-          {Math.max(
-            0,
-            Math.floor((callMeta.creditMinor - (elapsed * callMeta.rateMinor) / 60) / callMeta.rateMinor),
-          )}{" "}
-          min left
-        </p>
+        <div className="mx-auto w-full max-w-sm rounded-2xl border border-teal/40 bg-mint/40 px-5 py-4">
+          <div className="grid grid-cols-2 divide-x divide-teal/20">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Credit left</p>
+              <p className="font-display text-3xl font-bold text-teal">
+                {formatMoney(
+                  Math.max(0, callMeta.creditMinor - Math.ceil((elapsed * callMeta.rateMinor) / 60)),
+                  callMeta.currency,
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Minutes left</p>
+              <p className="font-display text-3xl font-bold text-navy">
+                ~
+                {Math.max(
+                  0,
+                  Math.floor(
+                    (callMeta.creditMinor - (elapsed * callMeta.rateMinor) / 60) / callMeta.rateMinor,
+                  ),
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {!canPlayAudio && (
@@ -327,8 +352,8 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       )}
 
       <div className="mx-auto w-full max-w-sm space-y-2">
-        <AudioLevelBar label={muted ? "You (muted)" : "You"} level={muted ? 0 : levels.me} />
-        <AudioLevelBar label={otherName} level={levels.other} />
+        <AudioLevelBar label="You" level={levels.me} muted={muted} />
+        <AudioLevelBar label={otherName} level={levels.other} muted={otherMuted} />
       </div>
 
       <div className="flex justify-center gap-3">
@@ -358,21 +383,25 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 }
 
 // A speaking meter: fills and turns green while that side's voice is coming
-// through, so both people can SEE the audio flowing.
-function AudioLevelBar({ label, level }: { label: string; level: number }) {
-  const speaking = level > 0.02;
+// through, so both people can SEE the audio flowing. Shows muted state too.
+function AudioLevelBar({ label, level, muted = false }: { label: string; level: number; muted?: boolean }) {
+  const speaking = !muted && level > 0.02;
   const width = Math.min(100, Math.round(level * 300));
   return (
     <div className="flex items-center gap-3">
       <span className="w-28 shrink-0 truncate text-right text-xs font-semibold text-navy">{label}</span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-line/50">
+      <div className={`h-2.5 flex-1 overflow-hidden rounded-full ${muted ? "bg-error/10" : "bg-line/50"}`}>
         <div
           className={`h-full rounded-full transition-all duration-150 ${speaking ? "bg-success" : "bg-line"}`}
           style={{ width: `${speaking ? Math.max(width, 12) : 4}%` }}
         />
       </div>
-      <span className={`w-16 shrink-0 text-xs ${speaking ? "font-semibold text-success" : "text-muted"}`}>
-        {speaking ? "speaking" : "quiet"}
+      <span
+        className={`w-16 shrink-0 text-xs ${
+          muted ? "font-semibold text-error" : speaking ? "font-semibold text-success" : "text-muted"
+        }`}
+      >
+        {muted ? "🔇 muted" : speaking ? "speaking" : "quiet"}
       </span>
     </div>
   );

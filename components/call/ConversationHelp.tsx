@@ -7,15 +7,15 @@ import { Card } from "@/components/ui/Card";
 
 type Props = {
   conversationId: string;
-  listenerName: string;
+  name: string;
   bio: string | null;
   photoUrl: string | null;
   topics: string[];
 };
 
-// Shown to the caller on the call page: who they're talking to, plus three
+// Shown to both parties on the call page: who they're talking to, plus three
 // AI-suggested openers so the conversation never starts cold.
-export function ConversationHelp({ conversationId, listenerName, bio, photoUrl, topics }: Props) {
+export function ConversationHelp({ conversationId, name, bio, photoUrl, topics }: Props) {
   const [starters, setStarters] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function ConversationHelp({ conversationId, listenerName, bio, photoUrl, 
           )}
         </div>
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-bold text-navy">About {listenerName}</h2>
+          <h2 className="font-display text-lg font-bold text-navy">About {name}</h2>
           {bio && <p className="mt-1 text-sm text-muted">{bio}</p>}
           {topics.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">

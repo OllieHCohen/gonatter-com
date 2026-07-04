@@ -8,7 +8,7 @@ import { mintCallToken, countParticipants, closeRoom, livekitWsUrl } from "@/lib
 import { sendEmail, incomingCallEmail } from "@/lib/email";
 import { generateConversationStarters } from "@/lib/starters";
 
-// AI conversation starters for the caller, built from both profiles.
+// AI conversation starters for either party, built from the other's profile.
 export async function getConversationStarters(
   conversationId: string,
 ): Promise<{ starters: string[] }> {
@@ -31,24 +31,43 @@ export async function getConversationStarters(
     caller: { display_name: string } | null;
     listener: { display_name: string } | null;
   } | null;
-  if (!c || c.caller_id !== user.id) return { starters: [] };
+  if (!c || (c.caller_id !== user.id && c.listener_id !== user.id)) return { starters: [] };
 
-  const [{ data: lp }, { data: li }] = await Promise.all([
-    supabase.from("listener_profiles").select("bio").eq("profile_id", c.listener_id).maybeSingle(),
-    supabase
-      .from("listener_interests")
-      .select("interests(label)")
-      .eq("listener_id", c.listener_id),
-  ]);
-  const topics = ((li ?? []) as unknown as { interests: { label: string } | null }[])
-    .map((r) => r.interests?.label)
-    .filter((l): l is string => Boolean(l));
+  const isCaller = c.caller_id === user.id;
+  const admin = createAdminClient();
+
+  let otherBio: string | null = null;
+  let otherTopics: string[] = [];
+  if (isCaller) {
+    const [{ data: lp }, { data: li }] = await Promise.all([
+      admin.from("listener_profiles").select("bio").eq("profile_id", c.listener_id).maybeSingle(),
+      admin.from("listener_interests").select("interests(label)").eq("listener_id", c.listener_id),
+    ]);
+    otherBio = (lp?.bio as string | null) ?? null;
+    otherTopics = ((li ?? []) as unknown as { interests: { label: string } | null }[])
+      .map((r) => r.interests?.label)
+      .filter((l): l is string => Boolean(l));
+  } else {
+    // Callers have thin profiles — pull whatever interests exist; the
+    // generator falls back to warm general openers when there's nothing.
+    const { data: cp } = await admin
+      .from("caller_profiles")
+      .select("interests")
+      .eq("profile_id", c.caller_id)
+      .maybeSingle();
+    const ids = ((cp?.interests as string[] | null) ?? []).filter(Boolean);
+    if (ids.length) {
+      const { data: labels } = await admin.from("interests").select("label").in("id", ids);
+      otherTopics = ((labels ?? []) as { label: string }[]).map((l) => l.label);
+    }
+  }
 
   const starters = await generateConversationStarters({
-    callerName: c.caller?.display_name ?? "The caller",
-    listenerName: c.listener?.display_name ?? "The listener",
-    listenerBio: (lp?.bio as string | null) ?? null,
-    listenerTopics: topics,
+    speakerName: (isCaller ? c.caller?.display_name : c.listener?.display_name) ?? "You",
+    speakerRole: isCaller ? "caller" : "listener",
+    otherName: (isCaller ? c.listener?.display_name : c.caller?.display_name) ?? "the other person",
+    otherBio,
+    otherTopics,
   });
   return { starters };
 }

@@ -35,9 +35,9 @@ export default async function CallPage({ params }: Params) {
   const isCaller = c.caller_id === userId;
   const otherName = (isCaller ? c.listener?.display_name : c.caller?.display_name) ?? "Someone";
 
-  // Listener profile context for the caller (bio, photo, topics) — helps the
-  // conversation start, both before and during the call.
-  let help: React.ReactNode = null;
+  // Context about the other person (bio, photo, topics where they exist) plus
+  // AI conversation starters — for BOTH parties, before and during the call.
+  let help: React.ReactNode;
   if (isCaller) {
     const [{ data: helpLp }, { data: li }] = await Promise.all([
       supabase
@@ -53,10 +53,22 @@ export default async function CallPage({ params }: Params) {
     help = (
       <ConversationHelp
         conversationId={conversationId}
-        listenerName={otherName}
+        name={otherName}
         bio={(helpLp?.bio as string | null) ?? null}
         photoUrl={(helpLp?.photo_url as string | null) ?? null}
         topics={topics}
+      />
+    );
+  } else {
+    // Callers have thin profiles — the starters action fills the gap with
+    // warm general openers when there's little to go on.
+    help = (
+      <ConversationHelp
+        conversationId={conversationId}
+        name={otherName}
+        bio={null}
+        photoUrl={null}
+        topics={[]}
       />
     );
   }
@@ -99,6 +111,7 @@ export default async function CallPage({ params }: Params) {
             Back to messages
           </ButtonLink>
         </Card>
+        {help}
       </main>
     );
   }
