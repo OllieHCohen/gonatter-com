@@ -74,9 +74,19 @@ export function BugRow({ bug }: Props) {
       {showContext && (
         <dl className="grid grid-cols-1 gap-1 rounded-xl bg-mint/40 p-3 text-xs text-navy sm:grid-cols-2">
           {Object.entries(bug.context ?? {}).map(([k, v]) => (
-            <div key={k} className="break-all">
+            <div key={k} className={`break-all ${Array.isArray(v) && v.length > 1 ? "sm:col-span-2" : ""}`}>
               <dt className="inline font-semibold">{k}: </dt>
-              <dd className="inline">{Array.isArray(v) ? v.join(" | ") : String(v)}</dd>
+              <dd className="inline">
+                {Array.isArray(v) ? (
+                  v.length === 0 ? (
+                    "—"
+                  ) : (
+                    <span className="block whitespace-pre-line pl-3">{v.join("\n")}</span>
+                  )
+                ) : (
+                  String(v)
+                )}
+              </dd>
             </div>
           ))}
         </dl>

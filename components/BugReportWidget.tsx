@@ -15,6 +15,39 @@ export function BugReportWidget() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string>();
   const recentErrors = useRef<string[]>([]);
+  const pathHistory = useRef<string[]>([]);
+  const recentClicks = useRef<string[]>([]);
+  const mountedAt = useRef<number>(Date.now());
+
+  // hh:mm:ss stamps make the breadcrumb trails readable for whoever debugs.
+  function stamp() {
+    return new Date().toISOString().slice(11, 19);
+  }
+
+  // Breadcrumbs: which pages the user visited and what they clicked just
+  // before the bug — the "how do I replicate this" trail for admins.
+  useEffect(() => {
+    pathHistory.current = [...pathHistory.current, `${stamp()} ${pathname}`].slice(-10);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest?.(
+        "button, a, select, [role=button], input[type=checkbox]",
+      ) as HTMLElement | null;
+      if (!target) return;
+      const label = (target.getAttribute("aria-label") || target.textContent || target.tagName)
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 40);
+      recentClicks.current = [
+        ...recentClicks.current,
+        `${stamp()} ${target.tagName.toLowerCase()} "${label}"`,
+      ].slice(-10);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
 
   // Quietly collect any JS errors that happen while browsing, so a report
   // filed after something breaks carries the evidence with it.
@@ -34,7 +67,10 @@ export function BugReportWidget() {
   }, []);
 
   function gatherContext(): Record<string, unknown> {
-    const nav = navigator as Navigator & { connection?: { effectiveType?: string } };
+    const nav = navigator as Navigator & {
+      connection?: { effectiveType?: string };
+      deviceMemory?: number;
+    };
     return {
       path: pathname,
       referrer: document.referrer,
@@ -46,7 +82,14 @@ export function BugReportWidget() {
       pixel_ratio: window.devicePixelRatio,
       online: navigator.onLine,
       connection: nav.connection?.effectiveType ?? "unknown",
+      device_memory_gb: nav.deviceMemory ?? "unknown",
+      cpu_cores: navigator.hardwareConcurrency ?? "unknown",
+      touch_device: "ontouchstart" in window,
+      cookies_enabled: navigator.cookieEnabled,
+      time_on_page_s: Math.round((Date.now() - mountedAt.current) / 1000),
       reported_at: new Date().toISOString(),
+      pages_visited: pathHistory.current,
+      recent_clicks: recentClicks.current,
       recent_js_errors: recentErrors.current,
     };
   }

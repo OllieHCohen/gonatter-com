@@ -21,7 +21,7 @@ function sanitiseContext(raw: Record<string, unknown> | undefined): Record<strin
   for (const [key, value] of Object.entries(raw).slice(0, 24)) {
     const k = key.slice(0, 64);
     if (Array.isArray(value)) {
-      out[k] = value.slice(0, 5).map((v) => String(v).slice(0, 500));
+      out[k] = value.slice(-12).map((v) => String(v).slice(0, 300));
     } else {
       out[k] = String(value).slice(0, 500);
     }

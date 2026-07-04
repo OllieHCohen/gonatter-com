@@ -32,10 +32,27 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
   const [sending, setSending] = useState(false);
   const [online, setOnline] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const lastSeenIdRef = useRef<string | null>(initialMessages.at(-1)?.id ?? null);
 
+  // Open at the bottom (latest messages), instantly, once.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    endRef.current?.scrollIntoView();
+  }, []);
+
+  // Auto-scroll ONLY when a genuinely new message arrives, and only if the
+  // reader is already near the bottom (or it's their own send). Never yank
+  // someone away from older messages they scrolled up to read.
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.id === lastSeenIdRef.current) return;
+    lastSeenIdRef.current = last.id;
+    const el = listRef.current;
+    const nearBottom = el ? el.scrollHeight - el.scrollTop - el.clientHeight < 120 : true;
+    if (nearBottom || last.sender_id === userId) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, userId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -53,7 +70,15 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
         supabase.from("conversations").select("state").eq("id", conversationId).maybeSingle(),
       ]);
       if (cancelled) return;
-      if (msgs) setMessages(msgs as ThreadMessage[]);
+      if (msgs) {
+        // Keep the previous array identity when nothing changed, so the
+        // scroll effect doesn't fire on every poll tick.
+        setMessages((prev) => {
+          const next = msgs as ThreadMessage[];
+          if (prev.length === next.length && prev.at(-1)?.id === next.at(-1)?.id) return prev;
+          return next;
+        });
+      }
       if (conv?.state) setState(conv.state as ConversationState);
     }
 
@@ -158,7 +183,7 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
         )}
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto py-4">
+      <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto py-4">
         {messages.map((m) => {
           const mine = m.sender_id === userId;
           return (
