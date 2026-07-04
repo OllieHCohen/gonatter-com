@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
+import { blockState } from "@/lib/blocks";
 import { Thread, type ThreadMessage } from "@/components/messages/Thread";
 import type { ConversationState } from "@/lib/types";
 
@@ -41,6 +43,7 @@ export default async function ConversationPage({ params }: Params) {
   const otherName =
     (isListener ? c.caller?.display_name : c.listener?.display_name) ?? "Someone";
   const otherId = isListener ? c.caller_id : c.listener_id;
+  const blocked = await blockState(createAdminClient(), userId, otherId);
 
   return (
     <Thread
@@ -51,6 +54,8 @@ export default async function ConversationPage({ params }: Params) {
       otherId={otherId}
       initialState={c.state}
       initialMessages={(msgs ?? []) as ThreadMessage[]}
+      initialBlockedByMe={blocked.blockedByMe}
+      initialBlockedMe={blocked.blockedMe}
     />
   );
 }

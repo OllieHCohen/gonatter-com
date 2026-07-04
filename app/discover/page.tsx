@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import { formatRate } from "@/lib/money";
@@ -56,10 +57,21 @@ export default async function DiscoverPage({
 }: {
   searchParams: Promise<Filters>;
 }) {
-  await requireRole("caller");
+  const { userId } = await requireRole("caller");
   const filters = await searchParams;
   const minRating = Number(filters.rating) || 0;
   const supabase = await createClient();
+
+  // Hide anyone in a block relationship with this caller, in either direction.
+  const { data: blockRows } = await createAdminClient()
+    .from("blocks")
+    .select("blocker_id, blocked_id")
+    .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
+  const hiddenIds = new Set(
+    ((blockRows ?? []) as { blocker_id: string; blocked_id: string }[]).map((b) =>
+      b.blocker_id === userId ? b.blocked_id : b.blocker_id,
+    ),
+  );
 
   // Base query: live listeners, optionally narrowed by the active filters.
   // listener_interests hangs off profiles (not listener_profiles), so the
@@ -87,7 +99,7 @@ export default async function DiscoverPage({
       .eq("available", true),
   ]);
 
-  const listeners = (data ?? []) as unknown as Row[];
+  const listeners = ((data ?? []) as unknown as Row[]).filter((l) => !hiddenIds.has(l.profile_id));
   const interests = (interestRows ?? []) as { id: string; label: string }[];
   const countryCodes = Array.from(
     new Set(

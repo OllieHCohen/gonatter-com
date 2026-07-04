@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/browser";
 import { sendMessage, setConversationState } from "@/app/messages/actions";
+import { blockUser, unblockUser } from "@/app/blocks/actions";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import type { ConversationState } from "@/lib/types";
@@ -23,14 +24,29 @@ type Props = {
   otherId: string;
   initialState: ConversationState;
   initialMessages: ThreadMessage[];
+  initialBlockedByMe: boolean;
+  initialBlockedMe: boolean;
 };
 
-export function Thread({ conversationId, userId, role, otherName, otherId, initialState, initialMessages }: Props) {
+export function Thread({
+  conversationId,
+  userId,
+  role,
+  otherName,
+  otherId,
+  initialState,
+  initialMessages,
+  initialBlockedByMe,
+  initialBlockedMe,
+}: Props) {
   const [messages, setMessages] = useState<ThreadMessage[]>(initialMessages);
   const [state, setState] = useState<ConversationState>(initialState);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
+  const [blockedByMe, setBlockedByMe] = useState(initialBlockedByMe);
+  const [blockBusy, setBlockBusy] = useState(false);
   // Newest-first layout: the composer sits at the top and new messages appear
   // directly beneath it — no auto-scrolling anywhere, ever.
 
@@ -107,6 +123,7 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
+    setSendError(null);
     setDraft("");
     // Optimistic: show it immediately; fetchLatest reconciles to server truth.
     const temp: ThreadMessage = {
@@ -120,6 +137,7 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
     if (res?.error) {
       setMessages((prev) => prev.filter((m) => m.id !== temp.id));
       setDraft(body);
+      setSendError(res.error);
     }
     setSending(false);
   }
@@ -127,6 +145,20 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
   async function decide(next: "accepted" | "declined") {
     setState(next);
     await setConversationState(conversationId, next);
+  }
+
+  async function toggleBlock() {
+    if (blockBusy) return;
+    if (!blockedByMe && !window.confirm(`Block ${otherName}? They won't be able to message or call you, and you won't be able to contact them.`)) {
+      return;
+    }
+    setBlockBusy(true);
+    const res = blockedByMe ? await unblockUser(otherId) : await blockUser(otherId);
+    if (!res.error) {
+      setBlockedByMe(!blockedByMe);
+      setSendError(null);
+    }
+    setBlockBusy(false);
   }
 
   return (
@@ -149,19 +181,44 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
               {online ? "Online now" : "Offline"}
             </span>
           </p>
-          <Link
-            href={`/report?subject=${otherId}`}
-            className="text-xs font-semibold text-muted hover:text-error"
-          >
-            Report
-          </Link>
+          <span className="flex gap-3">
+            <Link
+              href={`/report?subject=${otherId}`}
+              className="text-xs font-semibold text-muted hover:text-error"
+            >
+              Report
+            </Link>
+            <button
+              type="button"
+              onClick={toggleBlock}
+              disabled={blockBusy}
+              className="text-xs font-semibold text-muted hover:text-error"
+            >
+              {blockedByMe ? "Unblock" : "Block"}
+            </button>
+          </span>
         </div>
-        {state === "accepted" && (
+        {state === "accepted" && !blockedByMe && !initialBlockedMe && (
           <ButtonLink href={`/call/${conversationId}`}>
             {role === "caller" ? "Start call" : "Join call"}
           </ButtonLink>
         )}
       </div>
+
+      {blockedByMe && (
+        <p className="mt-3 rounded-xl bg-error/10 px-4 py-3 text-center text-sm font-semibold text-navy">
+          {`You've blocked ${otherName}. They can't message or call you. `}
+          <button type="button" onClick={toggleBlock} disabled={blockBusy} className="text-teal underline">
+            Unblock
+          </button>
+        </p>
+      )}
+
+      {!blockedByMe && initialBlockedMe && (
+        <p className="mt-3 rounded-xl bg-line/30 px-4 py-3 text-center text-sm text-muted">
+          You can&apos;t contact this person.
+        </p>
+      )}
 
       {state === "declined" && (
         <p className="mt-3 rounded-xl bg-line/30 px-4 py-3 text-center text-sm text-muted">
@@ -186,18 +243,23 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
         </p>
       )}
 
-      {state !== "declined" && (
-        <form onSubmit={send} className="mt-3 flex gap-2 border-b border-line pb-4">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write a message…"
-            className="flex-1 rounded-full border border-line bg-white px-4 py-3 text-base text-navy placeholder:text-muted/70 focus:border-teal"
-          />
-          <Button type="submit" disabled={sending || !draft.trim()}>
-            Send
-          </Button>
-        </form>
+      {state !== "declined" && !blockedByMe && !initialBlockedMe && (
+        <div className="mt-3 border-b border-line pb-4">
+          <form onSubmit={send} className="flex gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Write a message…"
+              className="flex-1 rounded-full border border-line bg-white px-4 py-3 text-base text-navy placeholder:text-muted/70 focus:border-teal"
+            />
+            <Button type="submit" disabled={sending || !draft.trim()}>
+              Send
+            </Button>
+          </form>
+          {sendError && (
+            <p className="mt-2 text-center text-sm font-semibold text-error">{sendError}</p>
+          )}
+        </div>
       )}
 
       {/* Newest first — your just-sent message appears right under the box. */}

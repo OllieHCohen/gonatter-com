@@ -7,6 +7,7 @@ import { authorisedAmount, settle } from "@/lib/billing";
 import { mintCallToken, countParticipants, closeRoom, livekitWsUrl } from "@/lib/livekit";
 import { sendEmail, incomingCallEmail } from "@/lib/email";
 import { generateConversationStarters } from "@/lib/starters";
+import { blockState, BLOCKED_CONTACT_ERROR, BLOCKED_BY_ME_ERROR } from "@/lib/blocks";
 
 // AI conversation starters for either party, built from the other's profile.
 export async function getConversationStarters(
@@ -119,6 +120,11 @@ export async function createCallHold(
   if (conv.state !== "accepted") return { error: "This listener hasn't accepted yet." };
 
   const admin = createAdminClient();
+
+  // No calls across a block, in either direction.
+  const blocked = await blockState(admin, user.id, conv.listener_id);
+  if (blocked.blockedByMe) return { error: BLOCKED_BY_ME_ERROR };
+  if (blocked.blockedMe) return { error: BLOCKED_CONTACT_ERROR };
   const { data: lp } = await admin
     .from("listener_profiles")
     .select("per_minute_rate_minor, rate_currency, stripe_account_id, charges_enabled")

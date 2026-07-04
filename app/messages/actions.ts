@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, acceptedEmail } from "@/lib/email";
+import { blockState, BLOCKED_CONTACT_ERROR, BLOCKED_BY_ME_ERROR } from "@/lib/blocks";
 
 const bodySchema = z.string().trim().min(1).max(2000);
 
@@ -17,6 +18,18 @@ export async function sendMessage(conversationId: string, body: string) {
 
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return { error: "Message can't be empty." };
+
+  // No messaging across a block, in either direction.
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select("caller_id, listener_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!conv) return { error: "Conversation not found." };
+  const otherId = conv.caller_id === user.id ? conv.listener_id : conv.caller_id;
+  const blocked = await blockState(createAdminClient(), user.id, otherId);
+  if (blocked.blockedByMe) return { error: BLOCKED_BY_ME_ERROR };
+  if (blocked.blockedMe) return { error: BLOCKED_CONTACT_ERROR };
 
   const { error } = await supabase
     .from("messages")

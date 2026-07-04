@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, newMessageEmail } from "@/lib/email";
 import { PRECHAT_OPENER } from "@/lib/copy";
+import { blockState } from "@/lib/blocks";
 
 // Caller starts (or re-opens) a pre-chat with a listener, then lands in the
 // conversation thread. One conversation per (caller, listener) pair.
@@ -17,6 +18,10 @@ export async function startConversation(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // No new conversations across a block, in either direction.
+  const blocked = await blockState(createAdminClient(), user.id, listenerId);
+  if (blocked.blockedByMe || blocked.blockedMe) redirect("/discover");
 
   // Mark the platonic reminder as seen (first-time gate).
   await supabase

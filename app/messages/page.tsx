@@ -74,7 +74,12 @@ export default async function MessagesList() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-3xl font-bold text-navy">Messages</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-3xl font-bold text-navy">Messages</h1>
+        <Link href="/blocked" className="text-sm font-semibold text-muted hover:text-navy">
+          Blocked people
+        </Link>
+      </div>
 
       {convs.length === 0 ? (
         <Card>
