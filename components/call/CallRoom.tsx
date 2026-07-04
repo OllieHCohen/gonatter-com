@@ -31,6 +31,9 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
   const [status, setStatus] = useState<Status>("connecting");
   const [elapsed, setElapsed] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [canPlayAudio, setCanPlayAudio] = useState(true);
+  const [levels, setLevels] = useState<{ me: number; other: number }>({ me: 0, other: 0 });
+  const [diag, setDiag] = useState<Record<string, string>>({});
   const [summary, setSummary] = useState<{
     charged: boolean;
     finalAmountMinor: number;
@@ -93,6 +96,46 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       void finish(role === "caller" ? "listener_left" : "caller_left");
     });
 
+    // Live speaking levels for both sides — the visual proof that audio is
+    // actually flowing in each direction.
+    room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+      let me = 0;
+      let other = 0;
+      for (const p of speakers) {
+        if (p.identity === room.localParticipant.identity) me = p.audioLevel;
+        else other = p.audioLevel;
+      }
+      setLevels({ me, other });
+    });
+
+    // Browsers can silently refuse to play incoming audio until the user
+    // interacts (autoplay policy) — the classic "they hear me, I can't hear
+    // them". Surface it instead of suffering it.
+    room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+      setCanPlayAudio(room.canPlaybackAudio);
+    });
+
+    // Diagnostics snapshot every couple of seconds while in the call.
+    const diagTimer = setInterval(() => {
+      const lp = room.localParticipant;
+      const micPub = lp.getTrackPublications().find((p) => p.kind === "audio");
+      const remote = Array.from(room.remoteParticipants.values())[0];
+      const remotePub = remote?.getTrackPublications().find((p) => p.kind === "audio");
+      setDiag({
+        "connection": room.state,
+        "your microphone": micPub ? (micPub.isMuted ? "muted" : "publishing") : "NOT publishing",
+        "other participant": remote ? "connected" : "not connected",
+        "incoming audio": remotePub
+          ? remotePub.isSubscribed
+            ? remotePub.isMuted
+              ? "subscribed (they're muted)"
+              : "subscribed"
+            : "NOT subscribed"
+          : "no track yet",
+        "sound playback": room.canPlaybackAudio ? "allowed" : "BLOCKED by browser — tap Enable sound",
+      });
+    }, 2000);
+
     (async () => {
       const t = await getCallToken(callSessionId);
       if (cancelled) return;
@@ -111,15 +154,27 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
         setErrorMsg("We couldn't access your microphone. Check permissions and try again.");
         return;
       }
+      setCanPlayAudio(room.canPlaybackAudio);
       setStatus((s) => (s === "active" ? s : "waiting"));
       await refreshConnection();
     })();
 
     return () => {
       cancelled = true;
+      clearInterval(diagTimer);
       void room.disconnect();
     };
   }, [callSessionId, role, refreshConnection, finish]);
+
+  // Unblock incoming audio after a browser autoplay refusal.
+  async function enableSound() {
+    try {
+      await roomRef.current?.startAudio();
+      setCanPlayAudio(roomRef.current?.canPlaybackAudio ?? true);
+    } catch {
+      /* the button stays visible for another try */
+    }
+  }
 
   // Ticking timer + block-cap long-stop (the hard cap on spend).
   useEffect(() => {
@@ -210,6 +265,21 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 
       <div className="font-display text-5xl font-bold tabular-nums text-navy">{mmss(elapsed)}</div>
 
+      {!canPlayAudio && (
+        <button
+          type="button"
+          onClick={enableSound}
+          className="w-full rounded-2xl border-2 border-warning bg-warning/10 px-4 py-4 font-semibold text-navy"
+        >
+          🔊 Your browser is blocking incoming sound — tap here to enable it
+        </button>
+      )}
+
+      <div className="mx-auto w-full max-w-sm space-y-2">
+        <AudioLevelBar label={muted ? "You (muted)" : "You"} level={muted ? 0 : levels.me} />
+        <AudioLevelBar label={otherName} level={levels.other} />
+      </div>
+
       <div className="flex justify-center gap-3">
         <Button variant="secondary" onClick={toggleMute}>
           {muted ? "Unmute" : "Mute"}
@@ -218,6 +288,41 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
           End call
         </Button>
       </div>
+
+      <details className="text-left">
+        <summary className="cursor-pointer text-center text-xs font-semibold text-muted hover:text-navy">
+          Call diagnostics
+        </summary>
+        <dl className="mx-auto mt-2 max-w-sm space-y-1 rounded-xl bg-mint/40 p-3 text-xs text-navy">
+          {Object.entries(diag).map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3">
+              <dt className="font-semibold">{k}</dt>
+              <dd className={/NOT|BLOCKED/.test(v) ? "font-semibold text-error" : ""}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </Card>
+  );
+}
+
+// A speaking meter: fills and turns green while that side's voice is coming
+// through, so both people can SEE the audio flowing.
+function AudioLevelBar({ label, level }: { label: string; level: number }) {
+  const speaking = level > 0.02;
+  const width = Math.min(100, Math.round(level * 300));
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-28 shrink-0 truncate text-right text-xs font-semibold text-navy">{label}</span>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-line/50">
+        <div
+          className={`h-full rounded-full transition-all duration-150 ${speaking ? "bg-success" : "bg-line"}`}
+          style={{ width: `${speaking ? Math.max(width, 12) : 4}%` }}
+        />
+      </div>
+      <span className={`w-16 shrink-0 text-xs ${speaking ? "font-semibold text-success" : "text-muted"}`}>
+        {speaking ? "speaking" : "quiet"}
+      </span>
+    </div>
   );
 }
