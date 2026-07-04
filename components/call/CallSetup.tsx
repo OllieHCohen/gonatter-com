@@ -18,9 +18,10 @@ type Props = {
   listenerName: string;
   rateMinor: number;
   currency: string;
+  creditMinor?: number;
 };
 
-export function CallSetup({ conversationId, listenerName, rateMinor, currency }: Props) {
+export function CallSetup({ conversationId, listenerName, rateMinor, currency, creditMinor = 0 }: Props) {
   const router = useRouter();
   const [block, setBlock] = useState<30 | 60>(30);
   const [step, setStep] = useState<"choose" | "pay">("choose");
@@ -32,11 +33,17 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency }:
   const elementsRef = useRef<StripeElements | null>(null);
 
   const maxHold = rateMinor * block;
+  const creditCovers = creditMinor >= maxHold;
 
   async function toPayment() {
     setBusy(true);
     setError(null);
     const res = await createCallHold(conversationId, block);
+    if (res.funded === "credit" && res.callSessionId) {
+      // Paid from the wallet — no card step; the server page renders the room.
+      router.refresh();
+      return;
+    }
     setBusy(false);
     if (res.error || !res.clientSecret) {
       setError(res.error ?? "Couldn't set up the call.");
@@ -107,14 +114,25 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency }:
           </div>
 
           <div className="rounded-xl bg-mint/60 px-4 py-3 text-sm text-navy">{SPEND_CAP}</div>
-          <p className="text-sm text-muted">
-            We&apos;ll hold {formatMoney(maxHold, currency)}. You&apos;re only charged for the minutes you
-            actually talk — anything unused is released.
-          </p>
+          {creditCovers ? (
+            <p className="text-sm font-semibold text-success">
+              ✓ Your {formatMoney(creditMinor, currency)} credit covers this call — no card needed.
+              Only the minutes you talk are deducted.
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              We&apos;ll hold {formatMoney(maxHold, currency)}. You&apos;re only charged for the minutes you
+              actually talk — anything unused is released.
+              {creditMinor > 0 && (
+                <> Your {formatMoney(creditMinor, currency)} credit doesn&apos;t cover this block — top
+                up on the Credit page to skip the card step.</>
+              )}
+            </p>
+          )}
 
           {error && <FieldError>{error}</FieldError>}
           <Button onClick={toPayment} disabled={busy} size="lg" className="w-full">
-            {busy ? "Setting up…" : "Continue to payment"}
+            {busy ? "Setting up…" : creditCovers ? "Start call using credit" : "Continue to payment"}
           </Button>
         </>
       )}

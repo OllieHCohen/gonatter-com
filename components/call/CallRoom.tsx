@@ -45,6 +45,13 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [callMeta, setCallMeta] = useState<{
+    funding: "card" | "credit";
+    rateMinor: number;
+    creditMinor: number;
+    currency: string;
+  }>({ funding: "card", rateMinor: 0, creditMinor: 0, currency: "gbp" });
+
   const roomRef = useRef<Room | null>(null);
   const audioRef = useRef<HTMLDivElement>(null);
   const startedAtRef = useRef<number | null>(null);
@@ -152,6 +159,12 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       }
       blockSecondsRef.current = (t.blockMinutes ?? 60) * 60;
       currencyRef.current = t.currency ?? "gbp";
+      setCallMeta({
+        funding: t.funding ?? "card",
+        rateMinor: t.rateMinor ?? 0,
+        creditMinor: t.creditMinor ?? 0,
+        currency: t.currency ?? "gbp",
+      });
       try {
         await room.connect(t.wsUrl, t.token);
         await room.localParticipant.setMicrophoneEnabled(true);
@@ -286,6 +299,22 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
       </div>
 
       <div className="font-display text-5xl font-bold tabular-nums text-navy">{mmss(elapsed)}</div>
+
+      {role === "caller" && callMeta.funding === "credit" && callMeta.rateMinor > 0 && (
+        <p className="text-sm font-semibold text-teal">
+          Credit{" "}
+          {formatMoney(
+            Math.max(0, callMeta.creditMinor - Math.ceil((elapsed * callMeta.rateMinor) / 60)),
+            callMeta.currency,
+          )}{" "}
+          · about{" "}
+          {Math.max(
+            0,
+            Math.floor((callMeta.creditMinor - (elapsed * callMeta.rateMinor) / 60) / callMeta.rateMinor),
+          )}{" "}
+          min left
+        </p>
+      )}
 
       {!canPlayAudio && (
         <button

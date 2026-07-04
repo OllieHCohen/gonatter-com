@@ -42,6 +42,18 @@ export function newMessageEmail(fromName: string): { subject: string; html: stri
   };
 }
 
+export function incomingCallEmail(callerName: string, conversationId: string): { subject: string; html: string } {
+  return {
+    subject: `📞 ${callerName} is calling you on gonatter`,
+    html: shell(
+      `${callerName} is calling you now`,
+      `${callerName} has started a call and is waiting for you. Join now to talk — they're on the line.`,
+      "Join the call",
+      `/call/${conversationId}`,
+    ),
+  };
+}
+
 export function acceptedEmail(listenerName: string): { subject: string; html: string } {
   return {
     subject: `${listenerName} is ready to chat`,

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { CallSetup } from "@/components/call/CallSetup";
 import { CallRoom } from "@/components/call/CallRoom";
+import { ConversationHelp } from "@/components/call/ConversationHelp";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -34,6 +35,32 @@ export default async function CallPage({ params }: Params) {
   const isCaller = c.caller_id === userId;
   const otherName = (isCaller ? c.listener?.display_name : c.caller?.display_name) ?? "Someone";
 
+  // Listener profile context for the caller (bio, photo, topics) — helps the
+  // conversation start, both before and during the call.
+  let help: React.ReactNode = null;
+  if (isCaller) {
+    const [{ data: helpLp }, { data: li }] = await Promise.all([
+      supabase
+        .from("listener_profiles")
+        .select("bio, photo_url")
+        .eq("profile_id", c.listener_id)
+        .maybeSingle(),
+      supabase.from("listener_interests").select("interests(label)").eq("listener_id", c.listener_id),
+    ]);
+    const topics = ((li ?? []) as unknown as { interests: { label: string } | null }[])
+      .map((r) => r.interests?.label)
+      .filter((l): l is string => Boolean(l));
+    help = (
+      <ConversationHelp
+        conversationId={conversationId}
+        listenerName={otherName}
+        bio={(helpLp?.bio as string | null) ?? null}
+        photoUrl={(helpLp?.photo_url as string | null) ?? null}
+        topics={topics}
+      />
+    );
+  }
+
   // Is there a live call session for this conversation already?
   const { data: cs } = await supabase
     .from("call_sessions")
@@ -54,6 +81,7 @@ export default async function CallPage({ params }: Params) {
           otherName={otherName}
           otherId={isCaller ? c.listener_id : c.caller_id}
         />
+        {help}
       </main>
     );
   }
@@ -75,11 +103,14 @@ export default async function CallPage({ params }: Params) {
     );
   }
 
-  const { data: lp } = await supabase
-    .from("listener_profiles")
-    .select("per_minute_rate_minor, rate_currency")
-    .eq("profile_id", c.listener_id)
-    .single();
+  const [{ data: lp }, { data: cp }] = await Promise.all([
+    supabase
+      .from("listener_profiles")
+      .select("per_minute_rate_minor, rate_currency")
+      .eq("profile_id", c.listener_id)
+      .single(),
+    supabase.from("caller_profiles").select("credit_minor").eq("profile_id", userId).single(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-lg px-5 py-10">
@@ -88,7 +119,9 @@ export default async function CallPage({ params }: Params) {
         listenerName={otherName}
         rateMinor={lp?.per_minute_rate_minor ?? 0}
         currency={lp?.rate_currency ?? "gbp"}
+        creditMinor={(cp?.credit_minor as number | null) ?? 0}
       />
+      {help}
     </main>
   );
 }

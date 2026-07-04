@@ -71,6 +71,7 @@ export type CallerProfile = {
   gender: string | null;
   dob: string | null;
   stripe_customer_id: string | null;
+  credit_minor: number;
   interests: string[];
   seen_platonic_reminder: boolean;
 };

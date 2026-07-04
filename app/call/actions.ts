@@ -5,13 +5,80 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe, PLATFORM_FEE_PERCENT } from "@/lib/stripe";
 import { authorisedAmount, settle } from "@/lib/billing";
 import { mintCallToken, countParticipants, closeRoom, livekitWsUrl } from "@/lib/livekit";
+import { sendEmail, incomingCallEmail } from "@/lib/email";
+import { generateConversationStarters } from "@/lib/starters";
 
-type HoldResult = { clientSecret?: string; callSessionId?: string; error?: string };
+// AI conversation starters for the caller, built from both profiles.
+export async function getConversationStarters(
+  conversationId: string,
+): Promise<{ starters: string[] }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { starters: [] };
+
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select(
+      "caller_id, listener_id, caller:profiles!conversations_caller_id_fkey(display_name), listener:profiles!conversations_listener_id_fkey(display_name)",
+    )
+    .eq("id", conversationId)
+    .maybeSingle();
+  const c = conv as unknown as {
+    caller_id: string;
+    listener_id: string;
+    caller: { display_name: string } | null;
+    listener: { display_name: string } | null;
+  } | null;
+  if (!c || c.caller_id !== user.id) return { starters: [] };
+
+  const [{ data: lp }, { data: li }] = await Promise.all([
+    supabase.from("listener_profiles").select("bio").eq("profile_id", c.listener_id).maybeSingle(),
+    supabase
+      .from("listener_interests")
+      .select("interests(label)")
+      .eq("listener_id", c.listener_id),
+  ]);
+  const topics = ((li ?? []) as unknown as { interests: { label: string } | null }[])
+    .map((r) => r.interests?.label)
+    .filter((l): l is string => Boolean(l));
+
+  const starters = await generateConversationStarters({
+    callerName: c.caller?.display_name ?? "The caller",
+    listenerName: c.listener?.display_name ?? "The listener",
+    listenerBio: (lp?.bio as string | null) ?? null,
+    listenerTopics: topics,
+  });
+  return { starters };
+}
+
+type HoldResult = {
+  clientSecret?: string;
+  callSessionId?: string;
+  funded?: "card" | "credit";
+  error?: string;
+};
+
+// Tell the listener a call has started: email now; their browser banner picks
+// up the session insert via realtime. Best-effort — never blocks the call.
+async function notifyListenerOfCall(listenerId: string, callerName: string, conversationId: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: lu } = await admin.auth.admin.getUserById(listenerId);
+    if (lu.user?.email) {
+      const { subject, html } = incomingCallEmail(callerName, conversationId);
+      await sendEmail(lu.user.email, subject, html);
+    }
+  } catch (e) {
+    console.error("incoming-call notification failed:", e);
+  }
+}
 
 // CALLER: create the LiveKit room + a manual-capture Stripe hold for the chosen
 // block. The hold (= block length × rate) is the hard cap; we capture the real
-// amount at settlement. Returns a PaymentIntent client_secret for the browser
-// to confirm the card against.
+// amount at settlement. Prepaid credit covers the block instead when the
+// caller's balance is sufficient — no card step at all.
 export async function createCallHold(
   conversationId: string,
   blockMinutes: 30 | 60,
@@ -42,24 +109,19 @@ export async function createCallHold(
   // No charges_enabled check: the caller pays the platform either way, and the
   // listener's share accrues as a pending payout until they connect an account.
 
-  // Reuse or create the caller's Stripe customer.
   const { data: cp } = await supabase
     .from("caller_profiles")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, credit_minor")
     .eq("profile_id", user.id)
     .single();
-  let customerId = cp?.stripe_customer_id as string | null | undefined;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email ?? undefined,
-      metadata: { gonatter_user_id: user.id },
-    });
-    customerId = customer.id;
-    await admin.from("caller_profiles").update({ stripe_customer_id: customerId }).eq("profile_id", user.id);
-  }
 
   const authorised = authorisedAmount(lp.per_minute_rate_minor, blockMinutes);
   const room = `conv-${conversationId.slice(0, 8)}-${Date.now()}`;
+
+  // Prepaid credit covers the whole block? Skip the card entirely — the block
+  // is funded from the wallet and settlement deducts only the talked minutes.
+  const credit = (cp?.credit_minor as number | null) ?? 0;
+  const useCredit = credit >= authorised;
 
   const { data: cs, error: csErr } = await admin
     .from("call_sessions")
@@ -73,10 +135,26 @@ export async function createCallHold(
       block_minutes: blockMinutes,
       authorised_amount_minor: authorised,
       state: "authorising",
+      funding: useCredit ? "credit" : "card",
     })
     .select("id")
     .single();
   if (csErr || !cs) return { error: "Couldn't start the call. Try again." };
+
+  if (useCredit) {
+    return { callSessionId: cs.id, funded: "credit" };
+  }
+
+  // Card path: reuse or create the caller's Stripe customer + manual hold.
+  let customerId = cp?.stripe_customer_id as string | null | undefined;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: user.email ?? undefined,
+      metadata: { gonatter_user_id: user.id },
+    });
+    customerId = customer.id;
+    await admin.from("caller_profiles").update({ stripe_customer_id: customerId }).eq("profile_id", user.id);
+  }
 
   const pi = await stripe.paymentIntents.create({
     amount: authorised,
@@ -95,7 +173,7 @@ export async function createCallHold(
     status: "requires_capture",
   });
 
-  return { clientSecret: pi.client_secret ?? undefined, callSessionId: cs.id };
+  return { clientSecret: pi.client_secret ?? undefined, callSessionId: cs.id, funded: "card" };
 }
 
 type TokenResult = {
@@ -104,6 +182,9 @@ type TokenResult = {
   room?: string;
   blockMinutes?: number;
   currency?: string;
+  funding?: "card" | "credit";
+  rateMinor?: number;
+  creditMinor?: number;
   error?: string;
 };
 
@@ -117,7 +198,7 @@ export async function getCallToken(callSessionId: string): Promise<TokenResult> 
 
   const { data: cs } = await supabase
     .from("call_sessions")
-    .select("id, caller_id, listener_id, livekit_room, state, block_minutes, rate_currency")
+    .select("id, caller_id, listener_id, livekit_room, state, block_minutes, rate_currency, rate_minor, funding")
     .eq("id", callSessionId)
     .maybeSingle();
   if (!cs || (cs.caller_id !== user.id && cs.listener_id !== user.id)) {
@@ -125,6 +206,17 @@ export async function getCallToken(callSessionId: string): Promise<TokenResult> 
   }
   if (cs.state === "completed" || cs.state === "cancelled" || cs.state === "failed") {
     return { error: "This call has ended." };
+  }
+
+  // Credit-funded calls show the caller their remaining balance live.
+  let creditMinor: number | undefined;
+  if (cs.funding === "credit" && cs.caller_id === user.id) {
+    const { data: cp } = await supabase
+      .from("caller_profiles")
+      .select("credit_minor")
+      .eq("profile_id", user.id)
+      .single();
+    creditMinor = (cp?.credit_minor as number | null) ?? 0;
   }
 
   const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", user.id).single();
@@ -135,6 +227,9 @@ export async function getCallToken(callSessionId: string): Promise<TokenResult> 
     room: cs.livekit_room,
     blockMinutes: cs.block_minutes,
     currency: cs.rate_currency,
+    funding: cs.funding as "card" | "credit",
+    rateMinor: cs.rate_minor,
+    creditMinor,
   };
 }
 
@@ -162,6 +257,22 @@ export async function markConnected(
   }
 
   const isCaller = cs.caller_id === user.id;
+
+  // First time the caller lands in the room: nudge the listener to join
+  // (email now; their in-app banner reacts to the session via realtime).
+  if (isCaller && !cs.caller_connected) {
+    const { data: callerProfile } = await admin
+      .from("profiles")
+      .select("display_name")
+      .eq("id", cs.caller_id)
+      .single();
+    void notifyListenerOfCall(
+      cs.listener_id,
+      callerProfile?.display_name ?? "A caller",
+      cs.conversation_id,
+    );
+  }
+
   const n = await countParticipants(cs.livekit_room);
   const patch: Record<string, unknown> = {
     [isCaller ? "caller_connected" : "listener_connected"]: true,
@@ -227,7 +338,7 @@ export async function endCall(
     .select("*")
     .maybeSingle();
 
-  let cs = claimed;
+  const cs = claimed;
   if (!cs) {
     // Someone else claimed it (or it's already settled) — wait for the outcome.
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -254,16 +365,17 @@ export async function endCall(
     feePercent: PLATFORM_FEE_PERCENT,
   });
 
+  const isCredit = cs.funding === "credit";
   const { data: pay } = await admin
     .from("payments")
     .select("stripe_payment_intent_id")
     .eq("call_session_id", callSessionId)
-    .single();
+    .maybeSingle();
   const piId = pay?.stripe_payment_intent_id as string | undefined;
 
   try {
     if (!result.charge) {
-      if (piId) {
+      if (!isCredit && piId) {
         const pi = await stripe.paymentIntents.retrieve(piId);
         if (pi.status !== "canceled" && pi.status !== "succeeded") {
           await stripe.paymentIntents.cancel(piId);
@@ -281,7 +393,23 @@ export async function endCall(
         })
         .eq("id", callSessionId);
     } else {
-      if (piId) {
+      if (isCredit) {
+        // Deduct the talked minutes from the caller's prepaid balance.
+        const { data: cp } = await admin
+          .from("caller_profiles")
+          .select("credit_minor")
+          .eq("profile_id", cs.caller_id)
+          .single();
+        const newBalance = Math.max(0, ((cp?.credit_minor as number | null) ?? 0) - result.finalAmountMinor);
+        await admin.from("caller_profiles").update({ credit_minor: newBalance }).eq("profile_id", cs.caller_id);
+        await admin.from("credit_transactions").insert({
+          caller_id: cs.caller_id,
+          amount_minor: -result.finalAmountMinor,
+          currency: cs.rate_currency,
+          kind: "call_charge",
+          call_session_id: callSessionId,
+        });
+      } else if (piId) {
         await stripe.paymentIntents.capture(piId, { amount_to_capture: result.finalAmountMinor });
         await admin
           .from("payments")
