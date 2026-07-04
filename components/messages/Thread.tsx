@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/browser";
 import { sendMessage, setConversationState } from "@/app/messages/actions";
@@ -31,28 +31,8 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [online, setOnline] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const lastSeenIdRef = useRef<string | null>(initialMessages.at(-1)?.id ?? null);
-
-  // Open at the bottom (latest messages), instantly, once.
-  useEffect(() => {
-    endRef.current?.scrollIntoView();
-  }, []);
-
-  // Auto-scroll ONLY when a genuinely new message arrives, and only if the
-  // reader is already near the bottom (or it's their own send). Never yank
-  // someone away from older messages they scrolled up to read.
-  useEffect(() => {
-    const last = messages.at(-1);
-    if (!last || last.id === lastSeenIdRef.current) return;
-    lastSeenIdRef.current = last.id;
-    const el = listRef.current;
-    const nearBottom = el ? el.scrollHeight - el.scrollTop - el.clientHeight < 120 : true;
-    if (nearBottom || last.sender_id === userId) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, userId]);
+  // Newest-first layout: the composer sits at the top and new messages appear
+  // directly beneath it — no auto-scrolling anywhere, ever.
 
   useEffect(() => {
     const supabase = createClient();
@@ -71,8 +51,8 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
       ]);
       if (cancelled) return;
       if (msgs) {
-        // Keep the previous array identity when nothing changed, so the
-        // scroll effect doesn't fire on every poll tick.
+        // Keep the previous array identity when nothing changed — avoids
+        // pointless re-renders on every poll tick.
         setMessages((prev) => {
           const next = msgs as ThreadMessage[];
           if (prev.length === next.length && prev.at(-1)?.id === next.at(-1)?.id) return prev;
@@ -183,8 +163,46 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
         )}
       </div>
 
-      <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto py-4">
-        {messages.map((m) => {
+      {state === "declined" && (
+        <p className="mt-3 rounded-xl bg-line/30 px-4 py-3 text-center text-sm text-muted">
+          This conversation was declined.
+        </p>
+      )}
+
+      {state === "open" && role === "listener" && (
+        <div className="mt-3 flex gap-3">
+          <Button onClick={() => decide("accepted")} className="flex-1">
+            Accept
+          </Button>
+          <Button onClick={() => decide("declined")} variant="secondary" className="flex-1">
+            Decline
+          </Button>
+        </div>
+      )}
+
+      {state === "accepted" && role === "listener" && (
+        <p className="mt-3 rounded-xl bg-mint px-4 py-3 text-center text-sm text-navy">
+          You accepted. Tap “Join call” when {otherName} starts — or to be ready and waiting.
+        </p>
+      )}
+
+      {state !== "declined" && (
+        <form onSubmit={send} className="mt-3 flex gap-2 border-b border-line pb-4">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a message…"
+            className="flex-1 rounded-full border border-line bg-white px-4 py-3 text-base text-navy placeholder:text-muted/70 focus:border-teal"
+          />
+          <Button type="submit" disabled={sending || !draft.trim()}>
+            Send
+          </Button>
+        </form>
+      )}
+
+      {/* Newest first — your just-sent message appears right under the box. */}
+      <div className="flex-1 space-y-3 overflow-y-auto py-4">
+        {[...messages].reverse().map((m) => {
           const mine = m.sender_id === userId;
           return (
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
@@ -199,45 +217,7 @@ export function Thread({ conversationId, userId, role, otherName, otherId, initi
             </div>
           );
         })}
-        <div ref={endRef} />
       </div>
-
-      {state === "declined" && (
-        <p className="rounded-xl bg-line/30 px-4 py-3 text-center text-sm text-muted">
-          This conversation was declined.
-        </p>
-      )}
-
-      {state === "open" && role === "listener" && (
-        <div className="flex gap-3 border-t border-line pt-3">
-          <Button onClick={() => decide("accepted")} className="flex-1">
-            Accept
-          </Button>
-          <Button onClick={() => decide("declined")} variant="secondary" className="flex-1">
-            Decline
-          </Button>
-        </div>
-      )}
-
-      {state === "accepted" && role === "listener" && (
-        <p className="rounded-xl bg-mint px-4 py-3 text-center text-sm text-navy">
-          You accepted. Tap “Join call” when {otherName} starts — or to be ready and waiting.
-        </p>
-      )}
-
-      {state !== "declined" && (
-        <form onSubmit={send} className="mt-3 flex gap-2">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write a message…"
-            className="flex-1 rounded-full border border-line bg-white px-4 py-3 text-base text-navy placeholder:text-muted/70 focus:border-teal"
-          />
-          <Button type="submit" disabled={sending || !draft.trim()}>
-            Send
-          </Button>
-        </form>
-      )}
     </div>
   );
 }

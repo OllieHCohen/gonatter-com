@@ -2,6 +2,7 @@ import { requireUser, isAdmin } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { IncomingCallBanner } from "@/components/listener/IncomingCallBanner";
+import { NewMessageBanner } from "@/components/NewMessageBanner";
 
 export default async function MessagesLayout({ children }: { children: React.ReactNode }) {
   const { userId, profile } = await requireUser();
@@ -21,6 +22,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       {isListener && <IncomingCallBanner userId={userId} />}
+      <NewMessageBanner userId={userId} />
       <AppHeader nav={nav} name={profile?.display_name} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">{children}</main>
       <SiteFooter />
