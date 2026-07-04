@@ -314,6 +314,7 @@ type SettleResult = {
   charged: boolean;
   finalAmountMinor: number;
   chargeSeconds: number;
+  billableSeconds?: number; // actual connected time — reviews unlock on this, not on what was charged
   startedAt?: string | null;
   endedAt?: string | null;
   error?: string;
@@ -330,6 +331,7 @@ function recordedResult(cs: {
     charged: (cs.final_amount_minor ?? 0) > 0,
     finalAmountMinor: cs.final_amount_minor ?? 0,
     chargeSeconds: cs.billable_seconds ?? 0,
+    billableSeconds: cs.billable_seconds ?? 0,
     startedAt: cs.both_connected_at,
     endedAt: cs.ended_at,
     error: cs.state === "failed" ? "Settlement failed" : undefined,
@@ -508,6 +510,7 @@ export async function endCall(
       charged: false,
       finalAmountMinor: 0,
       chargeSeconds: billableSeconds,
+      billableSeconds,
       startedAt: cs.both_connected_at,
       endedAt: endedAt.toISOString(),
       error: "Settlement failed",
@@ -522,6 +525,7 @@ export async function endCall(
     charged: result.charge,
     finalAmountMinor: result.finalAmountMinor,
     chargeSeconds: result.chargeSeconds,
+    billableSeconds,
     startedAt: cs.both_connected_at,
     endedAt: endedAt.toISOString(),
   };

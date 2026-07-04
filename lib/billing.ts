@@ -3,7 +3,7 @@
 
 export const NO_CHARGE_THRESHOLD_SECONDS = 30; // connected < 30s → no charge
 export const MIN_BILLABLE_SECONDS = 60; // else apply a 1-minute minimum
-export const REVIEW_UNLOCK_SECONDS = 180; // reviews unlock after >= 3 min
+export const REVIEW_UNLOCK_SECONDS = 1; // any call that actually connected can be reviewed
 
 export type SettleInput = {
   billableSeconds: number; // both-connected → first-disconnect (server-measured)

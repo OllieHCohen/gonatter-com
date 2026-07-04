@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import { formatRate } from "@/lib/money";
 import { WHAT_IS } from "@/lib/copy";
+import { countryName } from "@/lib/countries";
+import { cn } from "@/lib/cn";
 
 type Row = {
   profile_id: string;
@@ -17,19 +19,82 @@ type Row = {
   profiles: { display_name: string; country: string | null } | null;
 };
 
-export default async function DiscoverPage() {
+type Filters = { country?: string; topic?: string; rating?: string };
+
+const RATING_OPTIONS = [
+  { value: "", label: "Any rating" },
+  { value: "3", label: "3★ +" },
+  { value: "4", label: "4★ +" },
+];
+
+function filterHref(current: Filters, patch: Partial<Filters>): string {
+  const next = { ...current, ...patch };
+  const params = new URLSearchParams();
+  if (next.country) params.set("country", next.country);
+  if (next.topic) params.set("topic", next.topic);
+  if (next.rating) params.set("rating", next.rating);
+  const qs = params.toString();
+  return qs ? `/discover?${qs}` : "/discover";
+}
+
+function FilterChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors",
+        active ? "border-teal bg-teal text-white" : "border-line bg-white text-navy hover:border-teal",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export default async function DiscoverPage({
+  searchParams,
+}: {
+  searchParams: Promise<Filters>;
+}) {
   await requireRole("caller");
+  const filters = await searchParams;
+  const minRating = Number(filters.rating) || 0;
   const supabase = await createClient();
-  const { data } = await supabase
+
+  // Base query: live listeners, optionally narrowed by the active filters.
+  let query = supabase
     .from("listener_profiles")
     .select(
-      "profile_id, bio, photo_url, per_minute_rate_minor, rate_currency, rating_avg, rating_count, profiles!inner(display_name, country)",
+      `profile_id, bio, photo_url, per_minute_rate_minor, rate_currency, rating_avg, rating_count, profiles!inner(display_name, country)${
+        filters.topic ? ", listener_interests!inner(interest_id)" : ""
+      }`,
     )
     .eq("id_verified", true)
-    .eq("available", true)
-    .order("rating_avg", { ascending: false });
+    .eq("available", true);
+  if (filters.country) query = query.eq("profiles.country", filters.country);
+  if (filters.topic) query = query.eq("listener_interests.interest_id", filters.topic);
+  if (minRating > 0) query = query.gte("rating_avg", minRating);
+
+  const [{ data }, { data: interestRows }, { data: liveCountries }] = await Promise.all([
+    query.order("rating_avg", { ascending: false }).order("rating_count", { ascending: false }),
+    supabase.from("interests").select("id, label").order("sort_order"),
+    supabase
+      .from("listener_profiles")
+      .select("profiles!inner(country)")
+      .eq("id_verified", true)
+      .eq("available", true),
+  ]);
 
   const listeners = (data ?? []) as unknown as Row[];
+  const interests = (interestRows ?? []) as { id: string; label: string }[];
+  const countryCodes = Array.from(
+    new Set(
+      ((liveCountries ?? []) as unknown as { profiles: { country: string | null } | null }[])
+        .map((r) => r.profiles?.country)
+        .filter((c): c is string => Boolean(c)),
+    ),
+  );
+  const hasFilters = Boolean(filters.country || filters.topic || minRating > 0);
 
   return (
     <div className="space-y-8">
@@ -38,12 +103,63 @@ export default async function DiscoverPage() {
         <p className="mt-2 max-w-2xl text-muted">{WHAT_IS.body}</p>
       </section>
 
+      <section className="space-y-3">
+        {countryCodes.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-16 shrink-0 text-xs font-bold uppercase tracking-wide text-muted">Where</span>
+            <FilterChip href={filterHref(filters, { country: undefined })} active={!filters.country}>
+              Anywhere
+            </FilterChip>
+            {countryCodes.map((code) => (
+              <FilterChip
+                key={code}
+                href={filterHref(filters, { country: code })}
+                active={filters.country === code}
+              >
+                {countryName(code)}
+              </FilterChip>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 shrink-0 text-xs font-bold uppercase tracking-wide text-muted">Topics</span>
+          <FilterChip href={filterHref(filters, { topic: undefined })} active={!filters.topic}>
+            Anything
+          </FilterChip>
+          {interests.map((it) => (
+            <FilterChip key={it.id} href={filterHref(filters, { topic: it.id })} active={filters.topic === it.id}>
+              {it.label}
+            </FilterChip>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 shrink-0 text-xs font-bold uppercase tracking-wide text-muted">Rating</span>
+          {RATING_OPTIONS.map((o) => (
+            <FilterChip
+              key={o.value || "any"}
+              href={filterHref(filters, { rating: o.value || undefined })}
+              active={(filters.rating ?? "") === o.value}
+            >
+              {o.label}
+            </FilterChip>
+          ))}
+        </div>
+      </section>
+
       {listeners.length === 0 ? (
         <Card>
           <p className="text-muted">
-            No listeners are available right now. Please check back in a little while — people come
-            online throughout the day.
+            {hasFilters
+              ? "No listeners match those filters right now — try widening them."
+              : "No listeners are available right now. Please check back in a little while — people come online throughout the day."}
           </p>
+          {hasFilters && (
+            <Link href="/discover" className="mt-3 inline-block font-semibold text-teal hover:underline">
+              Clear filters
+            </Link>
+          )}
         </Card>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -71,11 +187,18 @@ export default async function DiscoverPage() {
                     <p className="text-sm font-semibold text-teal">
                       {formatRate(l.per_minute_rate_minor, l.rate_currency)}
                     </p>
-                    {l.rating_count > 0 && (
-                      <p className="text-xs text-muted">
-                        {l.rating_avg.toFixed(1)} ★ ({l.rating_count})
-                      </p>
-                    )}
+                    <p className="text-sm">
+                      {l.rating_count > 0 ? (
+                        <span className="font-semibold text-sunshine">
+                          {"★".repeat(Math.round(l.rating_avg))}
+                          <span className="ml-1 text-xs font-normal text-muted">
+                            {l.rating_avg.toFixed(1)} ({l.rating_count})
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted">New — no ratings yet</span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 {l.bio && <p className="mt-4 line-clamp-3 text-sm text-muted">{l.bio}</p>}

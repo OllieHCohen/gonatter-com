@@ -39,6 +39,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
     charged: boolean;
     finalAmountMinor: number;
     chargeSeconds: number;
+    billableSeconds: number;
     currency: string;
     startedAt?: string | null;
     endedAt?: string | null;
@@ -75,6 +76,7 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
         charged: res.charged,
         finalAmountMinor: res.finalAmountMinor,
         chargeSeconds: res.chargeSeconds,
+        billableSeconds: res.billableSeconds ?? res.chargeSeconds,
         currency: currencyRef.current,
         startedAt: res.startedAt,
         endedAt: res.endedAt,
@@ -265,8 +267,8 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
             <p className="text-lg font-bold text-navy">No charge — the call was under 30 seconds.</p>
           )}
         </div>
-        {role === "caller" && summary.chargeSeconds >= REVIEW_UNLOCK_SECONDS && (
-          <ReviewForm callSessionId={callSessionId} listenerName={otherName} />
+        {summary.billableSeconds >= REVIEW_UNLOCK_SECONDS && (
+          <ReviewForm callSessionId={callSessionId} otherName={otherName} />
         )}
 
         <div className="flex flex-col items-center gap-2 pt-2">

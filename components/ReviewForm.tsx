@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Textarea, FieldError } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
 
-export function ReviewForm({ callSessionId, listenerName }: { callSessionId: string; listenerName: string }) {
+export function ReviewForm({ callSessionId, otherName }: { callSessionId: string; otherName: string }) {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [body, setBody] = useState("");
@@ -33,7 +33,7 @@ export function ReviewForm({ callSessionId, listenerName }: { callSessionId: str
 
   return (
     <div className="space-y-3 border-t border-line pt-4 text-left">
-      <p className="text-center text-sm font-semibold text-navy">How was your chat with {listenerName}?</p>
+      <p className="text-center text-sm font-semibold text-navy">How was your chat with {otherName}?</p>
       <div className="flex justify-center gap-1">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
