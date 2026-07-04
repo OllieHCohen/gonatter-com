@@ -17,8 +17,10 @@ export default function BecomeAListener() {
       </p>
       <h2>How you get paid</h2>
       <p>
-        You keep 75% of everything you earn. Payouts are handled securely through Stripe, straight
-        to your bank account.
+        You keep 75% of everything you earn. The first 2 minutes of each call are free for the
+        caller — it helps people relax into the conversation, and calls that get past that point
+        tend to run much longer. Charging (and your earnings) start from minute two onwards.
+        Payouts are handled securely through Stripe, straight to your bank account.
       </p>
       <h2>Getting started</h2>
       <p>

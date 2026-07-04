@@ -19,12 +19,12 @@ export default function HowItWorks() {
         Send a quick message to break the ice. Messaging is free — you&apos;re only ever charged
         during a call.
       </p>
-      <h2>3. Talk</h2>
+      <h2>3. Talk — the first 2 minutes are free</h2>
       <p>
-        When you&apos;re both ready, start an audio call. You choose how long you want to talk for
-        (30 or 60 minutes) and we hold that amount. You&apos;re only charged for the minutes you
-        actually use, and either person can end the call at any time. Calls under 30 seconds are
-        free.
+        When you&apos;re both ready, start an audio call. The first 2 minutes of every call are
+        free, so you can see whether you gel before any charging starts. After that you&apos;re
+        only charged for the minutes you actually use, up to the length you chose (30 or 60
+        minutes), and either person can end the call at any time.
       </p>
       <h2>Fair and platonic</h2>
       <p>

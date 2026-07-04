@@ -27,7 +27,13 @@ export const AGE_GATE =
 
 // B8 — Spend-cap reassurance
 export const SPEND_CAP =
-  "You're in control of what you spend. You'll only ever be charged for the time you actually talk, up to the length you choose here. You can end the call whenever you like.";
+  "You're in control of what you spend. The first 2 minutes of every call are free, then you're only charged for the time you actually talk, up to the length you choose here. You can end the call whenever you like.";
+
+// Free-minutes trust indicator — keep the phrasing consistent everywhere.
+export const FREE_MINUTES = {
+  badge: "First 2 minutes free",
+  line: "Every call starts with 2 free minutes — charging only begins once you know you've clicked.",
+};
 
 // B4 — Report reasons (maps to reports.category in the DB)
 export const REPORT_REASONS = [

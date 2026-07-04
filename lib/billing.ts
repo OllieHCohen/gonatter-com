@@ -1,8 +1,7 @@
 // Server-authoritative billing math (spec §5.5.6, §14.2-F). Pure + unit-tested.
 // All amounts are integer minor units (e.g. pence). Time in seconds.
 
-export const NO_CHARGE_THRESHOLD_SECONDS = 30; // connected < 30s → no charge
-export const MIN_BILLABLE_SECONDS = 60; // else apply a 1-minute minimum
+export const FREE_CALL_SECONDS = 120; // every call starts with 2 free minutes — charging begins after
 export const REVIEW_UNLOCK_SECONDS = 1; // any call that actually connected can be reviewed
 
 export type SettleInput = {
@@ -14,7 +13,7 @@ export type SettleInput = {
 
 export type SettleResult = {
   charge: boolean;
-  chargeSeconds: number; // seconds actually billed (after min + cap)
+  chargeSeconds: number; // seconds actually billed (after the free window + cap)
   finalAmountMinor: number; // captured from the pre-auth (<= authorised)
   platformFeeMinor: number;
   listenerAmountMinor: number;
@@ -29,13 +28,11 @@ export function settle({ billableSeconds, rateMinor, blockMinutes, feePercent }:
   const maxBillable = blockMinutes * 60;
   const effective = Math.min(Math.max(0, Math.floor(billableSeconds)), maxBillable);
 
-  // Connected < 30s → cancel, no charge.
-  if (effective < NO_CHARGE_THRESHOLD_SECONDS) {
+  // The first 2 minutes of every call are free; only time beyond that is billed.
+  const chargeSeconds = Math.max(0, effective - FREE_CALL_SECONDS);
+  if (chargeSeconds === 0) {
     return { charge: false, chargeSeconds: 0, finalAmountMinor: 0, platformFeeMinor: 0, listenerAmountMinor: 0 };
   }
-
-  // 1-minute minimum, never exceeding the block cap.
-  const chargeSeconds = Math.min(Math.max(effective, MIN_BILLABLE_SECONDS), maxBillable);
 
   // final_amount = round(seconds * rate / 60), guaranteed <= authorised.
   const finalAmountMinor = Math.round((chargeSeconds * rateMinor) / 60);

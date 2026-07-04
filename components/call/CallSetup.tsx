@@ -96,6 +96,9 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency, c
 
       {step === "choose" && (
         <>
+          <p className="w-fit rounded-full bg-success/15 px-4 py-2 text-sm font-bold text-success">
+            🎁 First 2 minutes free
+          </p>
           <div>
             <p className="mb-2 text-sm font-semibold text-navy">How long do you want to talk for?</p>
             <div className="grid grid-cols-2 gap-3">

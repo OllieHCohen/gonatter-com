@@ -2,7 +2,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { WHAT_IS, BRAND } from "@/lib/copy";
+import { WHAT_IS, BRAND, FREE_MINUTES } from "@/lib/copy";
 
 export default function Home() {
   return (
@@ -21,6 +21,9 @@ export default function Home() {
                 Fancy a chat? There&apos;s someone here to talk to.
               </h1>
               <p className="mt-5 max-w-prose text-lg text-muted">{WHAT_IS.body}</p>
+              <p className="mt-5 w-fit rounded-full bg-success/15 px-5 py-2.5 font-semibold text-success">
+                🎁 {FREE_MINUTES.badge} on every call
+              </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ButtonLink href="/signup" size="lg">
                   Talk to someone
@@ -65,10 +68,10 @@ export default function Home() {
             </Card>
             <Card>
               <h3 className="text-lg font-semibold text-navy">
-                You&apos;re in control of what you spend
+                First 2 minutes free, then you&apos;re in control
               </h3>
               <p className="mt-2 text-muted">
-                Choose a 30- or 60-minute block. You&apos;re only charged for the time you
+                {FREE_MINUTES.line} After that you&apos;re only charged for the time you
                 actually talk, and you can end the call whenever you like.
               </p>
             </Card>

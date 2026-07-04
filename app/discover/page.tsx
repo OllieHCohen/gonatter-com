@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import { formatRate } from "@/lib/money";
-import { WHAT_IS } from "@/lib/copy";
+import { WHAT_IS, FREE_MINUTES } from "@/lib/copy";
 import { countryName } from "@/lib/countries";
 import { cn } from "@/lib/cn";
 
@@ -103,6 +103,9 @@ export default async function DiscoverPage({
       <section>
         <h1 className="font-display text-3xl font-bold text-navy">{WHAT_IS.heading}</h1>
         <p className="mt-2 max-w-2xl text-muted">{WHAT_IS.body}</p>
+        <p className="mt-4 w-fit rounded-full bg-success/15 px-5 py-2.5 font-semibold text-success">
+          🎁 {FREE_MINUTES.badge} on every call — only pay once you know you&apos;ve clicked
+        </p>
       </section>
 
       <section className="space-y-3">

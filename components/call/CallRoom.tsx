@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { ReviewForm } from "@/components/ReviewForm";
 import { formatMoney } from "@/lib/money";
 import { SAFETY_END } from "@/lib/copy";
-import { REVIEW_UNLOCK_SECONDS } from "@/lib/billing";
+import { REVIEW_UNLOCK_SECONDS, FREE_CALL_SECONDS } from "@/lib/billing";
 
 type Props = {
   callSessionId: string;
@@ -240,9 +240,9 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
         <h1 className="font-display text-2xl font-bold text-navy">Call ended</h1>
         <p className="text-muted">{SAFETY_END}</p>
 
-        {summary.chargeSeconds > 0 && (
+        {summary.billableSeconds > 0 && (
           <p className="text-sm text-muted">
-            {startedLabel && <>Started {startedLabel} · </>}Call length {mmss(summary.chargeSeconds)}
+            {startedLabel && <>Started {startedLabel} · </>}Call length {mmss(summary.billableSeconds)}
           </p>
         )}
 
@@ -256,15 +256,18 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
             role === "caller" ? (
               <p className="text-lg font-bold text-navy">
                 You were charged {formatMoney(summary.finalAmountMinor, summary.currency)} for{" "}
-                {mmss(summary.chargeSeconds)}
+                {mmss(summary.chargeSeconds)} — your first 2 minutes were free
               </p>
             ) : (
               <p className="text-lg font-bold text-navy">
-                You earned {formatMoney(listenerShare, summary.currency)} for {mmss(summary.chargeSeconds)}
+                You earned {formatMoney(listenerShare, summary.currency)} for {mmss(summary.chargeSeconds)} of
+                paid time
               </p>
             )
           ) : (
-            <p className="text-lg font-bold text-navy">No charge — the call was under 30 seconds.</p>
+            <p className="text-lg font-bold text-navy">
+              No charge — {role === "caller" ? "your" : "the"} first 2 minutes are free. 🎁
+            </p>
           )}
         </div>
         {summary.billableSeconds >= REVIEW_UNLOCK_SECONDS && (
@@ -315,6 +318,19 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
 
       <div className="font-display text-5xl font-bold tabular-nums text-navy">{mmss(elapsed)}</div>
 
+      {status === "active" &&
+        (elapsed < FREE_CALL_SECONDS ? (
+          <p className="mx-auto w-fit rounded-full bg-success/15 px-5 py-2 font-semibold text-success">
+            🎁 Free — {mmss(FREE_CALL_SECONDS - elapsed)} of free time left
+          </p>
+        ) : (
+          <p className="mx-auto w-fit rounded-full bg-sunshine/20 px-5 py-2 text-sm font-semibold text-navy">
+            {role === "caller" && callMeta.rateMinor > 0
+              ? `Your free 2 minutes are used — now ${formatMoney(callMeta.rateMinor, callMeta.currency)}/min`
+              : "Past the free 2 minutes — this time counts"}
+          </p>
+        ))}
+
       {role === "caller" && callMeta.funding === "credit" && callMeta.rateMinor > 0 && (
         <div className="mx-auto w-full max-w-sm rounded-2xl border border-teal/40 bg-mint/40 px-5 py-4">
           <div className="grid grid-cols-2 divide-x divide-teal/20">
@@ -322,7 +338,11 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Credit left</p>
               <p className="font-display text-3xl font-bold text-teal">
                 {formatMoney(
-                  Math.max(0, callMeta.creditMinor - Math.ceil((elapsed * callMeta.rateMinor) / 60)),
+                  Math.max(
+                    0,
+                    callMeta.creditMinor -
+                      Math.ceil((Math.max(0, elapsed - FREE_CALL_SECONDS) * callMeta.rateMinor) / 60),
+                  ),
                   callMeta.currency,
                 )}
               </p>
@@ -334,7 +354,10 @@ export function CallRoom({ callSessionId, conversationId, role, otherName, other
                 {Math.max(
                   0,
                   Math.floor(
-                    (callMeta.creditMinor - (elapsed * callMeta.rateMinor) / 60) / callMeta.rateMinor,
+                    Math.max(0, FREE_CALL_SECONDS - elapsed) / 60 +
+                      (callMeta.creditMinor -
+                        (Math.max(0, elapsed - FREE_CALL_SECONDS) * callMeta.rateMinor) / 60) /
+                        callMeta.rateMinor,
                   ),
                 )}
               </p>
