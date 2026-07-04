@@ -155,8 +155,7 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency, c
 
           {!creditCovers && (
             <p className="text-sm text-muted">
-              We&apos;ll hold {formatMoney(maxHold, currency)} on your card. You&apos;re only charged for the
-              minutes you actually talk — anything unused is released.
+              {`We'll hold ${formatMoney(maxHold, currency)} on your card. You're only charged for the minutes you actually talk — anything unused is released.`}
             </p>
           )}
 
