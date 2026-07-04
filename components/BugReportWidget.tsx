@@ -17,7 +17,11 @@ export function BugReportWidget() {
   const recentErrors = useRef<string[]>([]);
   const pathHistory = useRef<string[]>([]);
   const recentClicks = useRef<string[]>([]);
-  const mountedAt = useRef<number>(Date.now());
+  const mountedAt = useRef<number>(0);
+
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
 
   // hh:mm:ss stamps make the breadcrumb trails readable for whoever debugs.
   function stamp() {
@@ -86,7 +90,7 @@ export function BugReportWidget() {
       cpu_cores: navigator.hardwareConcurrency ?? "unknown",
       touch_device: "ontouchstart" in window,
       cookies_enabled: navigator.cookieEnabled,
-      time_on_page_s: Math.round((Date.now() - mountedAt.current) / 1000),
+      time_on_page_s: mountedAt.current ? Math.round((Date.now() - mountedAt.current) / 1000) : 0,
       reported_at: new Date().toISOString(),
       pages_visited: pathHistory.current,
       recent_clicks: recentClicks.current,
