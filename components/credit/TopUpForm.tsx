@@ -45,7 +45,9 @@ export function TopUpForm() {
 
   useEffect(() => {
     if (step === "pay" && elementsRef.current) {
-      const paymentEl = elementsRef.current.create("payment");
+      const paymentEl = elementsRef.current.create("payment", {
+        layout: { type: "accordion", defaultCollapsed: false },
+      });
       paymentEl.mount("#topup-payment-element");
       paymentEl.on("ready", () => setPayReady(true));
     }
