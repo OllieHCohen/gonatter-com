@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
 import { createCallHold } from "@/app/call/actions";
@@ -116,19 +117,46 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency, c
           </div>
 
           <div className="rounded-xl bg-mint/60 px-4 py-3 text-sm text-navy">{SPEND_CAP}</div>
-          {creditCovers ? (
-            <p className="text-sm font-semibold text-success">
-              ✓ Your {formatMoney(creditMinor, currency)} credit covers this call — no card needed.
-              Only the minutes you talk are deducted.
-            </p>
-          ) : (
-            <p className="text-sm text-muted">
-              We&apos;ll hold {formatMoney(maxHold, currency)}. You&apos;re only charged for the minutes you
-              actually talk — anything unused is released.
-              {creditMinor > 0 && (
-                <> Your {formatMoney(creditMinor, currency)} credit doesn&apos;t cover this block — top
-                up on the Credit page to skip the card step.</>
+
+          <div
+            className={cn(
+              "rounded-2xl border px-5 py-4",
+              creditCovers ? "border-success/50 bg-success/5" : "border-line bg-white",
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-muted">Your call credit</p>
+                <p className="font-display text-3xl font-bold text-teal">
+                  {formatMoney(creditMinor, currency)}
+                </p>
+              </div>
+              {creditCovers ? (
+                <span className="rounded-full bg-success/10 px-4 py-2 text-sm font-bold text-success">
+                  ✓ Covers this call
+                </span>
+              ) : (
+                <Link
+                  href="/credit"
+                  className="rounded-full bg-teal px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-600"
+                >
+                  Top up credit
+                </Link>
               )}
+            </div>
+            <p className="mt-2 text-sm text-navy">
+              {creditCovers
+                ? "No card needed — only the minutes you actually talk are deducted from your credit."
+                : creditMinor > 0
+                  ? `Not enough to cover this ${block}-minute block (${formatMoney(maxHold, currency)}). Top up to skip the card step, or continue with a card below.`
+                  : "Top up once and start calls instantly — no card step each time."}
+            </p>
+          </div>
+
+          {!creditCovers && (
+            <p className="text-sm text-muted">
+              We&apos;ll hold {formatMoney(maxHold, currency)} on your card. You&apos;re only charged for the
+              minutes you actually talk — anything unused is released.
             </p>
           )}
 
