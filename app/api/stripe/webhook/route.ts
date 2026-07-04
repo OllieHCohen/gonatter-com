@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { releasePendingPayouts } from "@/lib/payouts";
 
 // Authoritative backstop for async Stripe state. Local dev uses reconcile-on-
 // return instead (no public URL); set STRIPE_WEBHOOK_SECRET once deployed.
@@ -42,10 +43,13 @@ export async function POST(req: Request) {
       const acct = event.data.object as Stripe.Account;
       const uid = acct.metadata?.gonatter_user_id;
       if (uid) {
+        const enabled = acct.payouts_enabled === true;
         await admin
           .from("listener_profiles")
-          .update({ charges_enabled: acct.payouts_enabled === true })
+          .update({ charges_enabled: enabled })
           .eq("profile_id", uid);
+        // Settle any earnings that accrued while payouts weren't connected.
+        if (enabled) await releasePendingPayouts(admin, uid, acct.id);
       }
       break;
     }

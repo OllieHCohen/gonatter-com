@@ -39,7 +39,8 @@ export async function createCallHold(
     .eq("profile_id", conv.listener_id)
     .single();
   if (!lp) return { error: "Listener unavailable." };
-  if (!lp.charges_enabled) return { error: "This listener isn't set up to take payments yet." };
+  // No charges_enabled check: the caller pays the platform either way, and the
+  // listener's share accrues as a pending payout until they connect an account.
 
   // Reuse or create the caller's Stripe customer.
   const { data: cp } = await supabase

@@ -33,12 +33,12 @@ export default async function ListenerDashboard() {
   }>;
 
   // One row per requirement, so a listener sees exactly what's missing.
+  // Payouts are deliberately NOT required — earnings accrue until cash-out.
   const steps: Step[] = [
     { label: "Add a profile photo", done: Boolean(lp?.photo_url), href: "/listener/onboarding", cta: "Add photo" },
     { label: "Write a few lines about you", done: Boolean(lp?.bio), href: "/listener/onboarding", cta: "Write bio" },
     { label: "Add your date of birth", done: Boolean(lp?.dob), href: "/listener/onboarding", cta: "Add DOB" },
     { label: "Verify your identity", done: Boolean(lp?.id_verified), href: "/listener/onboarding", cta: "Verify ID" },
-    { label: "Set up payouts", done: Boolean(lp?.charges_enabled), href: "/listener/onboarding", cta: "Set up payouts" },
   ];
   const ready = steps.every((s) => s.done);
 
@@ -81,6 +81,21 @@ export default async function ListenerDashboard() {
               </li>
             ))}
           </ul>
+        </Card>
+      )}
+
+      {lp && !lp.charges_enabled && (
+        <Card className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-lg font-bold text-navy">Payouts</h2>
+            <p className="mt-1 text-sm text-muted">
+              Optional until you want your money — you can take calls now and your earnings build
+              up. Connect an account whenever you&apos;re ready to cash out.
+            </p>
+          </div>
+          <ButtonLink href="/listener/onboarding" variant="secondary">
+            Set up payouts
+          </ButtonLink>
         </Card>
       )}
 

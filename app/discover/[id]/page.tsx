@@ -47,7 +47,9 @@ export default async function ListenerDetail({ params }: Params) {
     charges_enabled: boolean;
     profiles: { display_name: string; country: string | null };
   };
-  const live = p.id_verified && p.charges_enabled && p.available;
+  // Payouts are deliberately NOT required to be live — earnings accrue as
+  // pending payouts until the listener connects an account to cash out.
+  const live = p.id_verified && p.available;
   const topics = ((li ?? []) as unknown as { interests: { label: string } | null }[])
     .map((r) => r.interests?.label)
     .filter(Boolean) as string[];

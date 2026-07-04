@@ -75,15 +75,33 @@ export async function saveListenerProfile(
   return { ok: true };
 }
 
-export async function setAvailability(available: boolean) {
+export async function setAvailability(available: boolean): Promise<{ error?: string } | undefined> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: "Not signed in" };
+
+  // Server-side go-live gate: complete profile + verified ID. Payouts are
+  // deliberately optional — earnings accrue until the listener cashes out.
+  if (available) {
+    const { data: lp } = await supabase
+      .from("listener_profiles")
+      .select("bio, photo_url, dob, id_verified")
+      .eq("profile_id", user.id)
+      .single();
+    if (!lp?.bio || !lp?.photo_url || !lp?.dob) {
+      return { error: "Finish your profile (photo, bio, date of birth) before going live." };
+    }
+    if (!lp.id_verified) {
+      return { error: "Verify your identity before going live." };
+    }
+  }
+
   await supabase
     .from("listener_profiles")
     .update({ available, available_updated_at: new Date().toISOString() })
     .eq("profile_id", user.id);
   revalidatePath("/listener");
+  return undefined;
 }

@@ -88,13 +88,13 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
       ? { label: "Incomplete", tone: "warning" as const }
       : { label: "Not started", tone: "muted" as const };
 
-  // Exactly what stands between this listener and going live.
+  // Exactly what stands between this listener and going live. Payouts are
+  // deliberately absent — they're only needed to cash out, not to take calls.
   const goLiveItems = [
     { label: "Profile photo", done: Boolean(photoUrl) },
     { label: "About you", done: Boolean(profile?.bio) },
     { label: "Date of birth", done: Boolean(profile?.dob) },
     { label: "Identity verified", done: Boolean(profile?.id_verified) },
-    { label: "Payouts set up", done: Boolean(profile?.charges_enabled) },
   ];
   const missing = goLiveItems.filter((i) => !i.done);
 
@@ -280,7 +280,8 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
             <StatusBadge {...payoutStatus} />
           </div>
           <p className="text-sm text-muted">
-            Connect a Stripe account so we can pay out your 75% share. Powered by Stripe Connect.
+            Connect a Stripe account so we can pay out your 75% share. Optional until you want to
+            cash out — you can go live and take calls without it, and your earnings build up.
           </p>
           {!profile?.charges_enabled && (
             <Button

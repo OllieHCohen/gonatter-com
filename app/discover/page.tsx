@@ -26,7 +26,6 @@ export default async function DiscoverPage() {
       "profile_id, bio, photo_url, per_minute_rate_minor, rate_currency, rating_avg, rating_count, profiles!inner(display_name, country)",
     )
     .eq("id_verified", true)
-    .eq("charges_enabled", true)
     .eq("available", true)
     .order("rating_avg", { ascending: false });
 
