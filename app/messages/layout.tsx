@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireUser, isAdmin } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -15,6 +15,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
           { href: "/discover", label: "Discover" },
           { href: "/messages", label: "Messages" },
         ];
+  if (isAdmin(profile)) nav.push({ href: "/admin", label: "Admin" });
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
       <AppHeader nav={nav} name={profile?.display_name} />

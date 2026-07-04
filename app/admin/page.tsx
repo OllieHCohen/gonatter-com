@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Card";
 import { ReportRow } from "@/components/admin/ReportRow";
@@ -17,7 +17,7 @@ export type AdminReport = {
 const STATE_ORDER: Record<string, number> = { open: 0, reviewing: 1, resolved: 2, dismissed: 3 };
 
 export default async function AdminReports() {
-  await requireRole("admin");
+  await requireAdmin();
   const admin = createAdminClient();
   const { data } = await admin
     .from("reports")

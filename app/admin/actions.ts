@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function resolveReport(
@@ -9,7 +9,7 @@ export async function resolveReport(
   state: "reviewing" | "resolved" | "dismissed",
   resolution?: string,
 ) {
-  const { userId } = await requireRole("admin");
+  const { userId } = await requireAdmin();
   const admin = createAdminClient();
   await admin
     .from("reports")

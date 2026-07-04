@@ -1,10 +1,14 @@
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { AppHeader } from "@/components/AppHeader";
 
-const NAV = [{ href: "/admin", label: "Reports" }];
+const NAV = [
+  { href: "/admin", label: "Reports" },
+  { href: "/admin/bugs", label: "Bug reports" },
+  { href: "/admin/admins", label: "Admins" },
+];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { profile } = await requireRole("admin");
+  const { profile } = await requireAdmin();
   return (
     <div className="min-h-dvh bg-canvas">
       <AppHeader nav={NAV} name={profile.display_name} />

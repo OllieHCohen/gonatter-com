@@ -30,6 +30,20 @@ export type Profile = {
   phone: string | null;
   phone_verified: boolean;
   status: ProfileStatus;
+  is_admin: boolean;
+  created_at: string;
+};
+
+export type BugReportStatus = "new" | "in_progress" | "resolved" | "dismissed";
+
+export type BugReport = {
+  id: string;
+  reporter_id: string | null;
+  reporter_email: string | null;
+  description: string;
+  page_url: string;
+  context: Record<string, unknown>;
+  status: BugReportStatus;
   created_at: string;
 };
 

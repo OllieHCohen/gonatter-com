@@ -49,6 +49,19 @@ export async function requireUser() {
   return session;
 }
 
+// Is this profile an admin? Grantable flag, with the legacy role as fallback.
+export function isAdmin(profile: Profile | null): boolean {
+  return !!profile && (profile.is_admin || profile.role === "admin");
+}
+
+// Guard: require an admin (any role with the is_admin flag, or the admin role).
+export async function requireAdmin() {
+  const session = await requireUser();
+  if (!session.profile) redirect("/signup");
+  if (!isAdmin(session.profile)) redirect(homePathForRole(session.profile.role));
+  return session as { userId: string; email: string | null; profile: Profile };
+}
+
 // Guard: require a specific role.
 export async function requireRole(role: UserRole) {
   const session = await requireUser();

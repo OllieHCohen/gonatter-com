@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Nunito } from "next/font/google";
+import { BugReportWidget } from "@/components/BugReportWidget";
 import "./globals.css";
 
 // Headings: rounded, friendly-but-grown-up sans (Brand §5).
@@ -34,6 +35,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
+        <BugReportWidget />
       </body>
     </html>
   );
