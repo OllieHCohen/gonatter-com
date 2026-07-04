@@ -17,35 +17,53 @@ export async function POST() {
   if (!profile || profile.role !== "listener") {
     return NextResponse.json({ error: "Listeners only" }, { status: 403 });
   }
-  const { data: lp } = await admin
-    .from("listener_profiles")
-    .select("stripe_account_id")
-    .eq("profile_id", user.id)
-    .single();
 
-  let accountId = lp?.stripe_account_id ?? null;
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: "express",
-      country: (profile.country ?? "gb").toUpperCase(),
-      email: user.email ?? undefined,
-      business_type: "individual",
-      capabilities: { transfers: { requested: true } },
-      metadata: { gonatter_user_id: user.id },
-    });
-    accountId = account.id;
-    await admin
+  try {
+    const { data: lp } = await admin
       .from("listener_profiles")
-      .update({ stripe_account_id: accountId })
-      .eq("profile_id", user.id);
-  }
+      .select("stripe_account_id")
+      .eq("profile_id", user.id)
+      .single();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-  const link = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/listener/onboarding?connect=refresh`,
-    return_url: `${appUrl}/listener/onboarding/connect/return`,
-    type: "account_onboarding",
-  });
-  return NextResponse.json({ url: link.url });
+    let accountId = lp?.stripe_account_id ?? null;
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: (profile.country ?? "gb").toUpperCase(),
+        email: user.email ?? undefined,
+        business_type: "individual",
+        capabilities: { transfers: { requested: true } },
+        metadata: { gonatter_user_id: user.id },
+      });
+      accountId = account.id;
+      await admin
+        .from("listener_profiles")
+        .update({ stripe_account_id: accountId })
+        .eq("profile_id", user.id);
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL!;
+    const link = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/listener/onboarding?connect=refresh`,
+      return_url: `${appUrl}/listener/onboarding/connect/return`,
+      type: "account_onboarding",
+    });
+    return NextResponse.json({ url: link.url });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Stripe Connect setup failed:", msg);
+    // File it in the admin bug queue automatically — payout setup failing
+    // silently is exactly the class of bug we never want to miss again.
+    await admin.from("bug_reports").insert({
+      reporter_id: user.id,
+      description: `Automatic report: payout setup (Stripe Connect) failed for this listener.\n\nStripe said: ${msg}`,
+      page_url: "/listener/onboarding",
+      context: { source: "api/stripe/connect" },
+    });
+    return NextResponse.json(
+      { error: "Payout setup isn't available right now. The team has been notified — please try again later." },
+      { status: 502 },
+    );
+  }
 }

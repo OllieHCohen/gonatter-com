@@ -32,9 +32,11 @@ export default async function ListenerDashboard() {
     caller: { display_name: string } | null;
   }>;
 
-  const hasProfile = Boolean(lp?.bio && lp?.photo_url && lp?.dob);
+  // One row per requirement, so a listener sees exactly what's missing.
   const steps: Step[] = [
-    { label: "Complete your profile", done: hasProfile, href: "/listener/onboarding", cta: "Edit profile" },
+    { label: "Add a profile photo", done: Boolean(lp?.photo_url), href: "/listener/onboarding", cta: "Add photo" },
+    { label: "Write a few lines about you", done: Boolean(lp?.bio), href: "/listener/onboarding", cta: "Write bio" },
+    { label: "Add your date of birth", done: Boolean(lp?.dob), href: "/listener/onboarding", cta: "Add DOB" },
     { label: "Verify your identity", done: Boolean(lp?.id_verified), href: "/listener/onboarding", cta: "Verify ID" },
     { label: "Set up payouts", done: Boolean(lp?.charges_enabled), href: "/listener/onboarding", cta: "Set up payouts" },
   ];

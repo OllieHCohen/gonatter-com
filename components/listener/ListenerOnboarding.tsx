@@ -32,6 +32,7 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
     profile ? (profile.per_minute_rate_minor / 100).toFixed(2) : "0.50",
   );
   const [stripeBusy, setStripeBusy] = useState<"identity" | "connect" | null>(null);
+  const [stripeError, setStripeError] = useState<{ kind: "identity" | "connect"; message: string } | null>(null);
 
   const rateMinor = Math.round(parseFloat(ratePounds || "0") * 100);
   const rateValid = Number.isFinite(rateMinor) && rateMinor >= MIN_RATE_MINOR;
@@ -60,6 +61,7 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
 
   async function startStripe(kind: "identity" | "connect") {
     setStripeBusy(kind);
+    setStripeError(null);
     try {
       const res = await fetch(`/api/stripe/${kind}`, { method: "POST" });
       const json = await res.json();
@@ -67,10 +69,11 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
         window.location.href = json.url as string;
         return;
       }
-      throw new Error();
+      setStripeError({ kind, message: json.error ?? "Something went wrong. Please try again." });
     } catch {
-      setStripeBusy(null);
+      setStripeError({ kind, message: "Something went wrong. Please try again." });
     }
+    setStripeBusy(null);
   }
 
   const idStatus = profile?.id_verified
@@ -85,6 +88,16 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
       ? { label: "Incomplete", tone: "warning" as const }
       : { label: "Not started", tone: "muted" as const };
 
+  // Exactly what stands between this listener and going live.
+  const goLiveItems = [
+    { label: "Profile photo", done: Boolean(photoUrl) },
+    { label: "About you", done: Boolean(profile?.bio) },
+    { label: "Date of birth", done: Boolean(profile?.dob) },
+    { label: "Identity verified", done: Boolean(profile?.id_verified) },
+    { label: "Payouts set up", done: Boolean(profile?.charges_enabled) },
+  ];
+  const missing = goLiveItems.filter((i) => !i.done);
+
   return (
     <div className="space-y-6">
       <div>
@@ -94,6 +107,29 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
           aren&apos;t comfortable with.
         </p>
       </div>
+
+      {missing.length > 0 ? (
+        <div className="rounded-2xl border border-warning/40 bg-warning/5 px-5 py-4">
+          <p className="font-semibold text-navy">
+            {missing.length === 1
+              ? "One thing left before you can go live:"
+              : `${missing.length} things left before you can go live:`}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+            {goLiveItems.map((i) => (
+              <li key={i.label} className={`text-sm ${i.done ? "text-success" : "font-semibold text-navy"}`}>
+                {i.done ? "✓" : "○"} {i.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-success/40 bg-success/5 px-5 py-4">
+          <p className="font-semibold text-navy">
+            ✓ You&apos;re all set — use the toggle on your dashboard to go live.
+          </p>
+        </div>
+      )}
 
       {state.ok && (
         <p className="rounded-lg bg-success/10 px-4 py-3 text-sm font-semibold text-success">
@@ -235,6 +271,7 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
               {stripeBusy === "identity" ? "Redirecting…" : "Verify my identity"}
             </Button>
           )}
+          {stripeError?.kind === "identity" && <FieldError>{stripeError.message}</FieldError>}
         </Card>
 
         <Card className="space-y-3">
@@ -259,6 +296,7 @@ export function ListenerOnboarding({ userId, profile, interests, selectedInteres
                   : "Set up payouts"}
             </Button>
           )}
+          {stripeError?.kind === "connect" && <FieldError>{stripeError.message}</FieldError>}
         </Card>
       </div>
     </div>
