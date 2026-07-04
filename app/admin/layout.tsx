@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 
 const NAV = [
   { href: "/admin", label: "Reports" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/bugs", label: "Bug reports" },
   { href: "/admin/admins", label: "Admins" },
 ];
