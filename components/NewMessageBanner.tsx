@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
@@ -67,12 +67,11 @@ export function NewMessageBanner({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  // Navigating into the conversation clears the banner.
-  useEffect(() => {
-    if (note && pathname === `/messages/${note.conversationId}`) setNote(null);
-  }, [pathname, note]);
-
   if (!note) return null;
+
+  // Navigating into the conversation clears the banner (render-time guard —
+  // no setState-in-effect cascade).
+  if (pathname === `/messages/${note.conversationId}`) return null;
 
   return (
     <div className="sticky top-0 z-40 border-b border-navy bg-navy px-4 py-3 text-white">
