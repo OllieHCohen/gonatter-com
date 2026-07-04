@@ -47,6 +47,7 @@ export function Thread({
   const [online, setOnline] = useState(false);
   const [blockedByMe, setBlockedByMe] = useState(initialBlockedByMe);
   const [blockBusy, setBlockBusy] = useState(false);
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
   // Newest-first layout: the composer sits at the top and new messages appear
   // directly beneath it — no auto-scrolling anywhere, ever.
 
@@ -147,9 +148,11 @@ export function Thread({
     await setConversationState(conversationId, next);
   }
 
+  // Two-step confirm rendered inline — no native dialogs.
   async function toggleBlock() {
     if (blockBusy) return;
-    if (!blockedByMe && !window.confirm(`Block ${otherName}? They won't be able to message or call you, and you won't be able to contact them.`)) {
+    if (!blockedByMe && !confirmingBlock) {
+      setConfirmingBlock(true);
       return;
     }
     setBlockBusy(true);
@@ -158,6 +161,7 @@ export function Thread({
       setBlockedByMe(!blockedByMe);
       setSendError(null);
     }
+    setConfirmingBlock(false);
     setBlockBusy(false);
   }
 
@@ -204,6 +208,22 @@ export function Thread({
           </ButtonLink>
         )}
       </div>
+
+      {confirmingBlock && !blockedByMe && (
+        <div className="mt-3 rounded-xl bg-error/10 px-4 py-3 text-center text-sm">
+          <p className="font-semibold text-navy">
+            {`Block ${otherName}? They won't be able to message or call you, and you won't be able to contact them.`}
+          </p>
+          <div className="mt-2 flex justify-center gap-3">
+            <Button variant="danger" onClick={toggleBlock} disabled={blockBusy}>
+              {blockBusy ? "Blocking…" : `Yes, block ${otherName}`}
+            </Button>
+            <Button variant="secondary" onClick={() => setConfirmingBlock(false)} disabled={blockBusy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {blockedByMe && (
         <p className="mt-3 rounded-xl bg-error/10 px-4 py-3 text-center text-sm font-semibold text-navy">
