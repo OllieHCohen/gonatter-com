@@ -62,17 +62,19 @@ export default async function DiscoverPage({
   const supabase = await createClient();
 
   // Base query: live listeners, optionally narrowed by the active filters.
+  // listener_interests hangs off profiles (not listener_profiles), so the
+  // topic filter has to join through the nested profiles embed.
   let query = supabase
     .from("listener_profiles")
     .select(
-      `profile_id, bio, photo_url, per_minute_rate_minor, rate_currency, rating_avg, rating_count, profiles!inner(display_name, country)${
+      `profile_id, bio, photo_url, per_minute_rate_minor, rate_currency, rating_avg, rating_count, profiles!inner(display_name, country${
         filters.topic ? ", listener_interests!inner(interest_id)" : ""
-      }`,
+      })`,
     )
     .eq("id_verified", true)
     .eq("available", true);
   if (filters.country) query = query.eq("profiles.country", filters.country);
-  if (filters.topic) query = query.eq("listener_interests.interest_id", filters.topic);
+  if (filters.topic) query = query.eq("profiles.listener_interests.interest_id", filters.topic);
   if (minRating > 0) query = query.gte("rating_avg", minRating);
 
   const [{ data }, { data: interestRows }, { data: liveCountries }] = await Promise.all([
