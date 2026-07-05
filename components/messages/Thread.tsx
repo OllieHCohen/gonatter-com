@@ -172,7 +172,15 @@ export function Thread({
           <Link href="/messages" className="text-sm text-muted hover:text-navy">
             ← Messages
           </Link>
-          <h1 className="font-display text-xl font-bold text-navy">{otherName}</h1>
+          <div className="mt-1 flex items-center gap-3">
+            <span
+              aria-hidden
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-teal font-display text-lg font-bold text-white"
+            >
+              {otherName.charAt(0).toUpperCase()}
+            </span>
+            <h1 className="font-display text-xl font-bold text-navy">{otherName}</h1>
+          </div>
           <p className="flex items-center gap-1.5 text-xs font-semibold">
             <span
               className={cn(

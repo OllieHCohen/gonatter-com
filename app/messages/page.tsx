@@ -97,8 +97,10 @@ export default async function MessagesList() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {convs.map((c) => {
-            const otherName = c.caller_id === userId ? c.listener?.display_name : c.caller?.display_name;
+          {convs.map((c, i) => {
+            const otherName =
+              (c.caller_id === userId ? c.listener?.display_name : c.caller?.display_name) ?? "Someone";
+            const tone = ["bg-teal", "bg-coral", "bg-navy"][i % 3];
             const last = lastByConv.get(c.id);
             const preview = last
               ? `${last.sender_id === userId ? "You: " : ""}${last.body}`
@@ -106,18 +108,26 @@ export default async function MessagesList() {
             return (
               <Link key={c.id} href={`/messages/${c.id}`} className="block">
                 <Card className="transition-shadow hover:shadow-md">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-navy">{otherName ?? "Someone"}</span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs text-muted">{when(last?.created_at ?? c.updated_at)}</span>
-                      <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-navy">
-                        {STATE_LABEL[c.state] ?? c.state}
-                      </span>
+                  <div className="flex items-center gap-4">
+                    <span
+                      aria-hidden
+                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${tone} font-display text-lg font-bold text-white`}
+                    >
+                      {otherName.charAt(0).toUpperCase()}
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="truncate font-semibold text-navy">{otherName}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="text-xs text-muted">{when(last?.created_at ?? c.updated_at)}</span>
+                          <span className="rounded-full bg-mint px-3 py-1 text-xs font-semibold text-navy">
+                            {STATE_LABEL[c.state] ?? c.state}
+                          </span>
+                        </span>
+                      </div>
+                      {preview && <p className="mt-0.5 truncate text-sm text-muted">{preview}</p>}
+                    </div>
                   </div>
-                  {preview && (
-                    <p className="mt-1 truncate text-sm text-muted">{preview}</p>
-                  )}
                 </Card>
               </Link>
             );
