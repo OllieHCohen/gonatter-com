@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth";
+import { VoiceBackdrop } from "@/components/VoiceBackdrop";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { TopUpForm } from "@/components/credit/TopUpForm";
@@ -36,7 +37,8 @@ export default async function CreditPage() {
   const history = (txns ?? []) as Txn[];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <VoiceBackdrop />
       <div>
         <h1 className="font-display text-3xl font-bold text-navy">Call credit</h1>
         <p className="mt-1 text-muted">

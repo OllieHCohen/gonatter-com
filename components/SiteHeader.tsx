@@ -17,7 +17,7 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Logo variant="light" priority />
+        <Logo variant="light" size="lg" priority />
         <nav className="hidden items-center gap-6 md:flex" aria-label="Main">
           {NAV.map((l) => (
             <Link key={l.href} href={l.href} className="text-sm font-semibold text-navy hover:text-teal">

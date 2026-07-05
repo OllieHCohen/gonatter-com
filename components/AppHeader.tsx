@@ -9,7 +9,7 @@ export function AppHeader({ nav = [], name }: { nav?: NavItem[]; name?: string }
     <header className="border-b border-line bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <div className="flex items-center gap-6">
-          <Logo variant="light" href="/post-auth" />
+          <Logo variant="light" size="lg" href="/" />
           <nav className="hidden items-center gap-4 text-sm font-semibold text-muted md:flex">
             {nav.map((n) => (
               <Link key={n.href} href={n.href} className="hover:text-navy">

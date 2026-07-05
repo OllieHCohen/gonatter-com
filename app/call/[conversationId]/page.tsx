@@ -6,6 +6,7 @@ import { CallRoom } from "@/components/call/CallRoom";
 import { ConversationHelp } from "@/components/call/ConversationHelp";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { VoiceBackdrop } from "@/components/VoiceBackdrop";
 
 type Params = { params: Promise<{ conversationId: string }> };
 
@@ -85,7 +86,8 @@ export default async function CallPage({ params }: Params) {
 
   if (cs) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-8">
+      <main className="relative mx-auto w-full max-w-2xl px-5 py-8">
+        <VoiceBackdrop />
         <CallRoom
           callSessionId={cs.id}
           conversationId={conversationId}
@@ -100,7 +102,8 @@ export default async function CallPage({ params }: Params) {
 
   if (!isCaller) {
     return (
-      <main className="mx-auto w-full max-w-lg px-5 py-16">
+      <main className="relative mx-auto w-full max-w-lg px-5 py-16">
+        <VoiceBackdrop />
         <Card className="space-y-4 text-center">
           <h1 className="font-display text-xl font-bold text-navy">Waiting for {otherName}</h1>
           <p className="text-muted">
@@ -126,7 +129,8 @@ export default async function CallPage({ params }: Params) {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 py-10">
+    <main className="relative mx-auto w-full max-w-lg px-5 py-10">
+      <VoiceBackdrop />
       <CallSetup
         conversationId={conversationId}
         listenerName={otherName}
