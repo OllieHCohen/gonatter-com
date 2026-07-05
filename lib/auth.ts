@@ -43,6 +43,11 @@ export function phoneVerificationRequired(): boolean {
 export async function requireUser() {
   const session = await getSessionProfile();
   if (!session) redirect("/login");
+  // Suspended/banned accounts are locked out of the whole app. (Their auth
+  // user is also banned, so this mainly catches still-live sessions.)
+  if (session.profile && session.profile.status !== "active") {
+    redirect("/suspended");
+  }
   if (session.profile && !session.profile.phone_verified && phoneVerificationRequired()) {
     redirect("/verify-phone");
   }

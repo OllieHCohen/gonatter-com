@@ -91,7 +91,7 @@ export function CallSetup({ conversationId, listenerName, rateMinor, currency, c
     <Card className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-navy">Call {listenerName}</h1>
-        <p className="mt-1 text-muted">{formatRate(rateMinor, currency)}</p>
+        <p className="mt-1 text-muted">{`${formatRate(rateMinor, currency)} · billed by the second`}</p>
       </div>
 
       {step === "choose" && (

@@ -25,9 +25,10 @@ export default function Terms() {
       <h2>Payments</h2>
       <p>
         The first 2 minutes of every call are free of charge. Beyond that, callers are charged for
-        the time actually spent on a call, up to the length they authorise. Listeners receive 75%
-        of the amount charged; gonatter retains a 25% platform fee. Payments are processed by
-        Stripe.
+        the time actually spent on a call, billed per second at the listener&apos;s advertised
+        per-minute rate (rounded to the nearest penny), up to the length they authorise. Listeners
+        receive 75% of the amount charged; gonatter retains a 25% platform fee. Payments are
+        processed by Stripe.
       </p>
       <h2>Changes</h2>
       <p>We may update these terms. Continued use means you accept the current version.</p>

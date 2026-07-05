@@ -23,8 +23,16 @@ export default function HowItWorks() {
       <p>
         When you&apos;re both ready, start an audio call. The first 2 minutes of every call are
         free, so you can see whether you gel before any charging starts. After that you&apos;re
-        only charged for the minutes you actually use, up to the length you chose (30 or 60
+        only charged for the time you actually use, up to the length you chose (30 or 60
         minutes), and either person can end the call at any time.
+      </p>
+      <h2>How the pricing works</h2>
+      <p>
+        Rates are shown per minute, but you&apos;re billed by the second — never a rounded-up
+        minute. For example, at 50p per minute a call lasting 3 minutes 30 seconds costs 75p:
+        the first 2 minutes are free, and the remaining 1 minute 30 seconds is billed
+        second-by-second. A call that ends within the first 2 minutes costs nothing at all.
+        Your receipt always shows the exact talk time and exactly what you paid.
       </p>
       <h2>Fair and platonic</h2>
       <p>

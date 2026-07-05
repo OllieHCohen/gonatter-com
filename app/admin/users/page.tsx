@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/Card";
+import { UserStatusButtons } from "@/components/admin/UserStatusButtons";
 import { formatMoney } from "@/lib/money";
 import { countryName } from "@/lib/countries";
 import { cn } from "@/lib/cn";
@@ -54,7 +55,7 @@ function Chip({ tone, children }: { tone: "good" | "warn" | "bad" | "plain"; chi
 }
 
 export default async function AdminUsers() {
-  await requireAdmin();
+  const { userId } = await requireAdmin();
   const admin = createAdminClient();
 
   const [{ data: profileRows }, { data: listenerRows }, { data: callerRows }] = await Promise.all([
@@ -144,6 +145,12 @@ export default async function AdminUsers() {
                   {`Last sign-in ${when(a?.lastSignInAt ?? null)}`}
                 </span>
               </div>
+              <UserStatusButtons
+                profileId={p.id}
+                name={p.display_name}
+                status={p.status}
+                isSelf={p.id === userId}
+              />
             </Card>
           );
         })}
