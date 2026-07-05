@@ -258,7 +258,7 @@ function VoiceVisual() {
 
         <div className="mt-6 space-y-3">
           <div className="flex items-center justify-between rounded-xl bg-success/10 px-4 py-2.5">
-            <span className="text-sm font-bold text-success">🎁 Free minutes</span>
+            <span className="text-sm font-bold text-success">{"🎁 Free minutes"}</span>
             <span className="font-display text-lg font-bold tabular-nums text-success">1:24</span>
           </div>
           <div className="rounded-xl bg-mint px-4 py-2.5">
