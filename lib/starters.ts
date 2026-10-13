@@ -63,7 +63,9 @@ export async function generateConversationStarters(input: StarterInput): Promise
 
   try {
     const response = await anthropic().messages.parse({
-      model: "claude-haiku-4-5",
+      model: "claude-haiku-5-5",
+      // Haiku 5.5 thinks by default; keep it off so the 500-token cap goes to the starters.
+      thinking: { type: "disabled" },
       max_tokens: 500,
       system:
         "You suggest conversation starters for gonatter, a platform for friendly, platonic phone chats between strangers. " +
