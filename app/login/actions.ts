@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit, HOUR } from "@/lib/rate-limit";
 import { homePathForRole, phoneVerificationRequired } from "@/lib/auth";
 import type { UserRole } from "@/lib/types";
 
@@ -19,6 +20,14 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     password: formData.get("password"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+
+  // Slow down password guessing.
+  const ip = await clientIp();
+  const allowed = await rateLimit(
+    { key: `login:ip:${ip}`, max: 30, windowSeconds: HOUR },
+    { key: `login:email:${parsed.data.email.toLowerCase()}`, max: 10, windowSeconds: HOUR },
+  );
+  if (!allowed) return { error: "Too many sign-in attempts. Please wait a while and try again." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);

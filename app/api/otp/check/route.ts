@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { checkOtp } from "@/lib/twilio";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit, HOUR } from "@/lib/rate-limit";
 
 const schema = z.object({
   phone: z.string().trim().regex(/^\+[1-9]\d{6,14}$/),
@@ -16,6 +17,15 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Enter the 6-digit code we sent you." }, { status: 400 });
+  }
+
+  // Stop brute-forcing the code.
+  const allowed = await rateLimit({ key: `otp-check:user:${user.id}`, max: 10, windowSeconds: HOUR });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please wait an hour and try again." },
+      { status: 429 },
+    );
   }
 
   const approved = await checkOtp(parsed.data.phone, parsed.data.code);

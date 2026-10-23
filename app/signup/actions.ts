@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit, DAY, HOUR } from "@/lib/rate-limit";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 const schema = z.object({
   role: z.enum(["caller", "listener"]),
@@ -32,6 +34,20 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Please check your details" };
   }
   const { role, display_name, email, password, country } = parsed.data;
+
+  // Bot defences. The honeypot is a field hidden from people; bots fill it in.
+  // Answer bots with a vague error so they learn nothing.
+  if (formData.get("website")) return { error: "Could not create account" };
+  const ip = await clientIp();
+  const allowed = await rateLimit(
+    { key: `signup:ip:${ip}`, max: 5, windowSeconds: HOUR },
+    { key: `signup:ip-day:${ip}`, max: 10, windowSeconds: DAY },
+  );
+  if (!allowed) return { error: "Too many sign-ups from your connection. Please try again later." };
+  const token = formData.get("cf-turnstile-response");
+  if (!(await verifyTurnstile(typeof token === "string" ? token : null, ip))) {
+    return { error: "Please complete the \"I'm human\" check and try again." };
+  }
 
   const admin = createAdminClient();
 
