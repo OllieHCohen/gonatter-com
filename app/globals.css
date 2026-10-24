@@ -78,10 +78,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+/* In the base layer so font/leading utilities on a heading can override it. */
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
 }
 
 /* Visible, calm focus ring for keyboard users (accessibility, §15). */

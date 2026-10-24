@@ -8,6 +8,7 @@ import { TopicSearch } from "@/components/home/TopicSearch";
 import { NattererGrid } from "@/components/home/NattererGrid";
 import { SparkCard, SparkIcon } from "@/components/home/SparkCard";
 import { Pairings } from "@/components/home/Pairings";
+import { getSessionProfile } from "@/lib/auth";
 
 const eyebrow = "text-sm font-black tracking-[0.17em] uppercase text-gn-coral-ink";
 const h2 = "font-serif text-[clamp(2.1rem,4vw,3.25rem)] font-bold leading-[1.08] tracking-[-0.02em] text-gn-navy";
@@ -82,7 +83,9 @@ function Icon({ children, className = "" }: { children: React.ReactNode; classNa
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const signedIn = !!(await getSessionProfile())?.profile;
+
   return (
     <div className="flex min-h-dvh flex-col bg-gn-paper font-brand text-gn-navy">
       <SiteHeader />
@@ -100,7 +103,7 @@ export default function Home() {
               something, share a passion, or simply enjoy someone&apos;s company.
             </p>
             <div className="mt-2">
-              <TopicSearch />
+              <TopicSearch signedIn={signedIn} />
             </div>
             <p className="text-sm text-gn-muted">
               First 2 minutes free on every call · Billed by the second · Free messaging · Adults only
@@ -116,7 +119,7 @@ export default function Home() {
               role="History undergraduate, Bristol"
               tilt={-2.5}
               imgClass="h-[300px]"
-              className="absolute left-0 top-2.5 w-[54%]"
+              className="absolute left-0 top-2.5 w-[50%]"
             />
             <Polaroid
               img="/home/peter.jpg"
@@ -126,9 +129,9 @@ export default function Home() {
               role="Veteran, 32 years of service"
               tilt={2}
               imgClass="h-[280px]"
-              className="absolute right-0 top-[190px] w-[52%]"
+              className="absolute right-0 top-[190px] w-[48%]"
             />
-            <span className="absolute left-[44%] top-[300px] z-10 grid h-16 w-16 place-items-center rounded-full bg-gn-navy shadow-[0_10px_24px_rgba(24,35,59,0.3)]">
+            <span className="absolute left-[calc(50%-32px)] top-[215px] z-10 grid h-16 w-16 place-items-center rounded-full bg-gn-navy shadow-[0_10px_24px_rgba(24,35,59,0.3)]">
               <LogoMark height={20} onDark />
             </span>
             <div className="absolute bottom-0 left-[6%] z-10 w-[250px] rounded-2xl border border-gn-line bg-gn-mist px-[18px] py-4">
@@ -186,7 +189,7 @@ export default function Home() {
               Natterer is ID-verified before they take a call.
             </p>
           </div>
-          <NattererGrid />
+          <NattererGrid signedIn={signedIn} />
           <p className="mt-7 text-sm text-gn-muted">
             Illustrative examples. Sign up to meet the real Natterers on gonatter.
           </p>

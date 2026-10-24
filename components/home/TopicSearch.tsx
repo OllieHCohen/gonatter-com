@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TOPICS } from "./data";
 
-const href = (interest?: string) => (interest ? `/discover?topic=${interest}` : "/discover");
+// Signed-out visitors go to sign-up; discovery needs a caller account.
+const hrefFor = (signedIn: boolean) => (interest?: string) =>
+  !signedIn ? "/signup" : interest ? `/discover?topic=${interest}` : "/discover";
 
 // Match free text to one of our topics ("garden" → Gardening). Anything we
 // don't recognise goes to discovery unfiltered.
@@ -17,8 +19,9 @@ function matchTopic(text: string) {
 
 // Hero "What would you like to talk about?" box. Sends people to discovery,
 // filtered to the topic when we recognise it.
-export function TopicSearch() {
+export function TopicSearch({ signedIn }: { signedIn: boolean }) {
   const router = useRouter();
+  const href = hrefFor(signedIn);
   const [text, setText] = useState("");
 
   return (

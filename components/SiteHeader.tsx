@@ -9,8 +9,9 @@ const NAV = [
   { href: "/become-a-listener", label: "Become a Natterer" },
 ];
 
+// No display class here, so callers can hide a pill on small screens.
 const pill =
-  "inline-flex min-h-11 items-center rounded-full px-5 font-brand text-[0.9rem] font-bold transition-colors";
+  "min-h-11 items-center whitespace-nowrap rounded-full px-4 font-brand sm:px-5 text-[0.9rem] font-bold transition-colors";
 
 export async function SiteHeader() {
   const session = await getSessionProfile();
@@ -18,8 +19,8 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-gn-line bg-gn-paper/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Logo variant="light" size="lg" priority />
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-5">
+        <Logo variant="light" size="lg" priority className="max-sm:[&_span]:text-2xl" />
         <nav className="hidden items-center gap-7 md:flex" aria-label="Main">
           {NAV.map((l) => (
             <Link
@@ -33,7 +34,7 @@ export async function SiteHeader() {
         </nav>
         <div className="flex items-center gap-2">
           {profile ? (
-            <Link href={homePathForRole(profile.role)} className={`${pill} bg-gn-navy text-white hover:bg-gn-navy-700`}>
+            <Link href={homePathForRole(profile.role)} className={`${pill} inline-flex bg-gn-navy text-white hover:bg-gn-navy-700`}>
               Open gonatter
             </Link>
           ) : (
@@ -41,8 +42,8 @@ export async function SiteHeader() {
               <Link href="/login" className={`${pill} hidden text-gn-navy hover:bg-gn-mist sm:inline-flex`}>
                 Log in
               </Link>
-              <Link href="/signup" className={`${pill} bg-gn-navy text-white hover:bg-gn-navy-700`}>
-                Find someone to talk to
+              <Link href="/signup" className={`${pill} inline-flex bg-gn-navy text-white hover:bg-gn-navy-700`}>
+                Find someone<span className="hidden sm:inline">&nbsp;to talk to</span>
               </Link>
             </>
           )}
