@@ -34,7 +34,28 @@
   --color-background: var(--color-canvas);
   --color-foreground: var(--color-ink);
 
+  /* ── 2026 brand refresh (Brand Walkthrough) ──
+     Navy + coral + slate/sage on a cool paper ground. Being rolled out
+     page by page, starting with the homepage and site chrome. */
+  --color-gn-navy: #18233b; /* text, dark surfaces */
+  --color-gn-navy-700: #2c3a55; /* chips on dark surfaces */
+  --color-gn-coral: #e07a5a; /* accent fills; navy text on it */
+  --color-gn-coral-ink: #b4532f; /* coral for text on light grounds (AA) */
+  --color-gn-blush: #f8ded5;
+  --color-gn-slate: #5b7186;
+  --color-gn-sage: #a9c3be;
+  --color-gn-sage-50: #dce9e5;
+  --color-gn-sage-ink: #2f5a52;
+  --color-gn-paper: #f6f7f9; /* page ground */
+  --color-gn-mist: #e9eef2; /* soft panels */
+  --color-gn-line: #d5dde5;
+  --color-gn-body: #3e4c60; /* body text */
+  --color-gn-muted: #56657a; /* secondary text, AA on paper */
+  --color-gn-on-dark: #d6dee8; /* body text on navy */
+
   /* ── Typography ── */
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-brand: var(--font-lato-sans), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
 

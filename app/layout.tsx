@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins, Nunito } from "next/font/google";
+import { Poppins, Nunito, Source_Serif_4, Lato } from "next/font/google";
 import { BugReportWidget } from "@/components/BugReportWidget";
 import "./globals.css";
 
@@ -19,6 +19,21 @@ const nunito = Nunito({
   display: "swap",
 });
 
+// 2026 brand refresh: serif display + clean sans body (Brand Walkthrough).
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  display: "swap",
+});
+
+const lato = Lato({
+  variable: "--font-lato-sans",
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "gonatter — real people, real conversations",
   description:
@@ -31,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${poppins.variable} ${nunito.variable} h-full antialiased`}
+      className={`${poppins.variable} ${nunito.variable} ${sourceSerif.variable} ${lato.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}

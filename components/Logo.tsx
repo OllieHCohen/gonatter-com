@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
@@ -12,33 +11,52 @@ type Props = {
   priority?: boolean;
 };
 
-const SRC = {
-  light: "/brand/logo-light.svg",
-  dark: "/brand/logo-dark.svg",
-  mark: "/brand/logo-mark.svg",
-} as const;
+// Mark height and wordmark size per size step.
+const MARK_H: Record<Size, number> = { sm: 20, md: 24, lg: 30 };
+const WORD: Record<Size, string> = { sm: "text-xl", md: "text-2xl", lg: "text-[1.9rem]" };
 
-// Heights for the full wordmark (width auto-scales to the ~2.5:1 ratio).
-const FULL_H: Record<Size, string> = { sm: "h-7", md: "h-10", lg: "h-14" };
-const MARK_WH: Record<Size, string> = { sm: "h-8 w-8", md: "h-10 w-10", lg: "h-14 w-14" };
+// The voice-waveform mark: coral dots either side of three bars.
+export function LogoMark({ height = 24, onDark = false }: { height?: number; onDark?: boolean }) {
+  return (
+    <svg
+      width={(height * 44) / 28}
+      height={height}
+      viewBox="0 0 44 28"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <circle cx="3" cy="14" r="3" fill="#e07a5a" />
+      <rect x="10" y="0" width="6" height="28" rx="3" fill={onDark ? "#ffffff" : "#18233b"} />
+      <rect x="20" y="5" width="5" height="18" rx="2.5" fill={onDark ? "#a9c3be" : "#5b7186"} />
+      <rect x="29" y="8" width="5" height="12" rx="2.5" fill={onDark ? "#5b7186" : "#a9c3be"} />
+      <circle cx="41" cy="14" r="3" fill="#e07a5a" />
+    </svg>
+  );
+}
 
 // "light"/"dark" describe the BACKGROUND the logo sits on.
-export function Logo({ variant = "light", size = "md", href = "/", className, priority }: Props) {
-  const isMark = variant === "mark";
-  const img = (
-    <Image
-      src={SRC[variant]}
-      alt="gonatter"
-      width={isMark ? 56 : 240}
-      height={isMark ? 56 : 96}
-      priority={priority}
-      className={cn(isMark ? MARK_WH[size] : `${FULL_H[size]} w-auto`, className)}
-    />
+export function Logo({ variant = "light", size = "md", href = "/", className }: Props) {
+  const onDark = variant === "dark";
+  const logo = (
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <LogoMark height={MARK_H[size]} onDark={onDark} />
+      {variant !== "mark" && (
+        <span
+          className={cn(
+            "font-serif font-bold leading-none tracking-[-0.02em]",
+            WORD[size],
+            onDark ? "text-white" : "text-gn-navy",
+          )}
+        >
+          gonatter
+        </span>
+      )}
+    </span>
   );
-  if (href === null) return img;
+  if (href === null) return logo;
   return (
     <Link href={href} aria-label="gonatter home" className="inline-flex items-center">
-      {img}
+      {logo}
     </Link>
   );
 }
